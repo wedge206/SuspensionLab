@@ -11,7 +11,7 @@ describe("chassis project format", () => {
       analysis: { bumpLimitMm: 120 },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.id).toBe("legacy-id");
     expect(project.name).toBe("Old suspension");
     expect(project.frontLowerControlArmPickup).toEqual({
@@ -56,6 +56,7 @@ describe("chassis project format", () => {
       tireSectionWidthMm: 195,
       tireAspectRatio: 65,
     });
+    expect(project.suspension).toEqual({ springRateNPerMm: 50 });
   });
 
   it("accepts a project with explicit top mount dimensions", () => {
@@ -87,7 +88,7 @@ describe("chassis project format", () => {
         strutMountLocationMm: 95,
       },
     })).toEqual({
-      schemaVersion: 21,
+      schemaVersion: 22,
       id: "project-id",
       name: "Frame project",
       frontLowerControlArmPickup: {
@@ -132,7 +133,29 @@ describe("chassis project format", () => {
         tireSectionWidthMm: 195,
         tireAspectRatio: 65,
       },
+      suspension: { springRateNPerMm: 50 },
     });
+  });
+
+  it("adds suspension defaults when migrating v21 projects", () => {
+    const currentProject = validateProject({
+      schemaVersion: 2,
+      id: "wheel-tire-migration",
+      name: "Wheel and tire migration",
+    });
+    const v21Project: Record<string, unknown> = { ...structuredClone(currentProject) };
+    v21Project.schemaVersion = 21;
+    delete v21Project.suspension;
+    expect(validateProject(v21Project).suspension).toEqual({ springRateNPerMm: 50 });
+    const customizedProject = validateProject({
+      ...currentProject,
+      suspension: { springRateNPerMm: 72.5 },
+    });
+    expect(customizedProject.suspension.springRateNPerMm).toBe(72.5);
+    expect(() => validateProject({
+      ...currentProject,
+      suspension: { springRateNPerMm: 0 },
+    })).toThrow("Spring rate");
   });
 
   it("adds wheel and tire defaults when migrating v20 projects", () => {
@@ -143,6 +166,7 @@ describe("chassis project format", () => {
     });
     const v20Project: Record<string, unknown> = { ...structuredClone(currentProject) };
     delete v20Project.wheelTire;
+    delete v20Project.suspension;
     v20Project.schemaVersion = 20;
     expect(validateProject(v20Project).wheelTire).toEqual({
       wheelOffsetMm: -42,
@@ -182,7 +206,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.wheelKnuckle.steeringPivotOffsetMm).toBe(-24);
     expect(project.wheelKnuckle.strutMountOffsetMm).toBe(-10);
     expect(project.wheelKnuckle.strutMountLocationMm).toBe(-89);
@@ -255,7 +279,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.steeringRack.tieRodLengthMm).toBe(338);
     expect(project.steeringRack.housingWidthMm).toBe(500);
     expect(project.steeringRack.steeringLimiterMm).toBe(10);
@@ -296,7 +320,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.wheelKnuckle).toEqual({
       steeringPivotHeightMm: 125,
       steeringPivotDepthMm: 210,
@@ -350,7 +374,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.steeringRack).toEqual({
       widthMm: 850,
       centerlineHeightMm: 362,
@@ -401,7 +425,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.steeringRack).toEqual({
       widthMm: 850,
       centerlineHeightMm: 362,
@@ -454,7 +478,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.wheelKnuckle.hubHeightMm).toBe(60);
     expect(project.wheelKnuckle.hubSpacingMm).toBe(94);
   });
@@ -511,7 +535,7 @@ describe("chassis project format", () => {
       frontTopMount: { heightMm: 920, widthMm: 980, offsetMm: 25 },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.frontLowerControlArmPickup.widthMm).toBe(325);
     expect(project.frontControlArm).toEqual({
       lengthMm: 330,
@@ -557,7 +581,7 @@ describe("chassis project format", () => {
       frontTopMount: { heightMm: 920, widthMm: 980, offsetMm: 25 },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.frontLowerControlArmPickup.widthMm).toBe(325);
     expect(project.frontControlArm.leftRotationRad).toBe(0.1);
     expect(project.frontTopMount).toEqual({ heightMm: 920, widthMm: 980, offsetMm: 25 });
@@ -603,7 +627,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(21);
+    expect(project.schemaVersion).toBe(22);
     expect(project.wheelKnuckle).toEqual({
       steeringPivotHeightMm: 140,
       steeringPivotDepthMm: 215,
@@ -711,9 +735,10 @@ describe("chassis project format", () => {
         tireSectionWidthMm: 195,
         tireAspectRatio: 65,
       },
+      suspension: { springRateNPerMm: 50 },
     };
     const project = (frontTopMount: unknown) => ({
-      schemaVersion: 21,
+      schemaVersion: 22,
       id: "id",
       name: "Frame",
       ...validDimensions,
@@ -744,7 +769,7 @@ describe("chassis project format", () => {
       steeringRack: { ...validDimensions.steeringRack, rackTravelMm: 166 },
     })).toThrow("positive finite");
     const projectWithWheelKnuckle = (wheelKnuckle: Record<string, unknown>) => ({
-      schemaVersion: 21,
+      schemaVersion: 22,
       id: "id",
       name: "Frame",
       ...validDimensions,
@@ -765,7 +790,7 @@ describe("chassis project format", () => {
       strutMountLocationMm: 89,
     }))).toThrow("non-negative finite");
     expect(() => validateProject({
-      schemaVersion: 21,
+      schemaVersion: 22,
       id: "id",
       name: "Frame",
       ...validDimensions,

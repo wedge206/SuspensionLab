@@ -1,4 +1,4 @@
-import type { Vec3 } from "./types";
+import type { SuspensionProject, Vec3 } from "./types";
 
 export const FRONT_PICKUP_STATION_MM = 650;
 
@@ -528,6 +528,94 @@ export interface WheelAlignmentMeasurements {
   camberDeg: [number, number];
   casterDeg: [number, number];
   scrubRadiusMm: [number | null, number | null];
+  motionRatio: [number | null, number | null];
+  wheelRateNPerMm: [number | null, number | null];
+}
+
+export function suspensionMotionRatios(
+  project: SuspensionProject,
+): [number | null, number | null] {
+  const { frontLowerControlArmPickup: pickup, frontControlArm: arm, steeringRack, frontTopMount, wheelKnuckle, wheelTire } = project;
+  const rackPivots = steeringRackPivotPoints(
+    steeringRack.widthMm,
+    steeringRack.centerlineHeightMm,
+    steeringRack.centerlineOffsetMm,
+    steeringRack.rackTravelMm,
+  );
+  const topMounts = frontTopMountPoints(frontTopMount.widthMm, frontTopMount.heightMm, frontTopMount.offsetMm);
+  const perturbationRad = 1e-4;
+  const sample = (side: 0 | 1, angle: number): { strutLength: number; wheelCenterHeight: number } => {
+    const rotations: [number, number] = [arm.leftRotationRad, arm.rightRotationRad];
+    rotations[side] = angle;
+    const points = controlArmPickupPoints(
+      pickup.widthMm,
+      pickup.rearWidthMm,
+      pickup.frontHeightMm,
+      pickup.rearHeightMm,
+      pickup.controlArmDepthMm,
+      arm.lengthMm,
+      arm.ballJointOffsetMm,
+      rotations[0],
+      rotations[1],
+    );
+    const knuckle = tieRodConstrainedKnucklePoints(
+      points.ballJoint,
+      rackPivots,
+      topMounts,
+      wheelKnuckle.steeringPivotHeightMm,
+      wheelKnuckle.steeringPivotDepthMm,
+      wheelKnuckle.steeringPivotOffsetMm,
+      wheelKnuckle.strutMountHeightMm,
+      wheelKnuckle.strutMountOffsetMm,
+      wheelKnuckle.strutMountLocationMm,
+      -wheelKnuckle.strutMountAngleDeg,
+      steeringRack.tieRodLengthMm,
+      wheelKnuckle.strutMinLengthMm,
+      wheelKnuckle.strutMaxLengthMm,
+    );
+    const neutralSteeringPivots = steeringKnucklePivotPoints(
+      points.ballJoint,
+      wheelKnuckle.steeringPivotHeightMm,
+      wheelKnuckle.steeringPivotDepthMm,
+      wheelKnuckle.steeringPivotOffsetMm,
+    );
+    const neutralStrutMounts = strutMountPoints(
+      points.ballJoint,
+      wheelKnuckle.strutMountHeightMm,
+      wheelKnuckle.strutMountOffsetMm,
+      wheelKnuckle.strutMountLocationMm,
+    );
+    const faces = steeredHubFacePoints(
+      points.ballJoint,
+      neutralSteeringPivots,
+      neutralStrutMounts,
+      wheelKnuckle.steeringPivotOffsetMm,
+      wheelKnuckle.strutMountLocationMm,
+      knuckle.orientations,
+    );
+    const trueFace = trueHubFaceGeometry(faces[side], wheelKnuckle.hubHeightMm, wheelKnuckle.hubSpacingMm);
+    const tireCenter = tireTreadCenter(trueFace.center, trueFace.normal, wheelTire.wheelOffsetMm);
+    return { strutLength: knuckle.strutLengths[side], wheelCenterHeight: tireCenter[2] };
+  };
+  const knownConstraintErrors = [
+    "Tie Rod Length cannot be satisfied at the current ball joint position.",
+    "Strut angle cannot reach the fixed top mount.",
+  ];
+  return [0, 1].map((sideIndex) => {
+    const side = sideIndex as 0 | 1;
+    try {
+      const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
+      const lower = sample(side, currentAngle - perturbationRad);
+      const upper = sample(side, currentAngle + perturbationRad);
+      const wheelTravel = Math.abs(upper.wheelCenterHeight - lower.wheelCenterHeight);
+      if (wheelTravel < 1e-8) return null;
+      const ratio = Math.abs(upper.strutLength - lower.strutLength) / wheelTravel;
+      return Number.isFinite(ratio) ? ratio : null;
+    } catch (error) {
+      if (error instanceof Error && knownConstraintErrors.includes(error.message)) return null;
+      throw error;
+    }
+  }) as [number | null, number | null];
 }
 
 export function wheelAlignmentMeasurements(
@@ -536,6 +624,8 @@ export function wheelAlignmentMeasurements(
   topMounts: [Vec3, Vec3],
   tireDiameterMm: number,
   tireCenters: [Vec3, Vec3] | null = null,
+  motionRatio: [number | null, number | null] = [null, null],
+  springRateNPerMm = 50,
 ): WheelAlignmentMeasurements {
   const toeMm = wheelFaceNormals.map((normal) =>
     normal[0] / Math.abs(normal[1]) * tireDiameterMm
@@ -560,11 +650,16 @@ export function wheelAlignmentMeasurements(
       return (tireCenters[index][1] - steeringAxisGroundY) * outwardSign;
     }) as [number | null, number | null]
     : [null, null];
+  const wheelRateNPerMm = motionRatio.map((ratio) =>
+    ratio === null ? null : springRateNPerMm * ratio ** 2
+  ) as [number | null, number | null];
   return {
     toeMm,
     totalToeMm: toeMm ? toeMm[0] + toeMm[1] : null,
     camberDeg,
     casterDeg,
     scrubRadiusMm,
+    motionRatio,
+    wheelRateNPerMm,
   };
 }

@@ -34,6 +34,7 @@ import {
   DEFAULT_WHEEL_DIAMETER_IN,
   DEFAULT_TIRE_SECTION_WIDTH_MM,
   DEFAULT_TIRE_ASPECT_RATIO,
+  DEFAULT_SPRING_RATE_N_PER_MM,
 } from "./domain/project";
 import { downloadProject, loadProjects, readProjectFile, saveProjects } from "./persistence/projects";
 import { steeringRackTravelLimitMm } from "./domain/coordinates";
@@ -231,6 +232,13 @@ app.innerHTML = `
           <span class="dimension-input"><input id="tire-aspect-ratio" type="number" min="1" step="1" /> <small>%</small></span>
         </label>
       </section>
+      <section class="build-sequence">
+        <div class="geometry-heading"><h2>Suspension</h2><span>Spring setup</span></div>
+        <label class="dimension-field" for="spring-rate">
+          <span><strong>Spring Rate</strong><small>Spring stiffness</small></span>
+          <span class="dimension-input"><input id="spring-rate" type="number" min="0.1" step="0.1" /> <small>N/mm</small></span>
+        </label>
+      </section>
       <p class="sidebar-footnote">Front and rear mount pairs are mirrored equally across the centerline; each mount station has its own height. Strut lengths run from the moving strut mounts to the fixed top mounts and are checked against the configured travel limits.</p>
     </aside>
     <section class="analysis-area">
@@ -260,6 +268,16 @@ app.innerHTML = `
             <strong id="scrub-radius-values">Left — mm · Right — mm</strong>
             <small>Tire centerline to steering-axis ground intersection</small>
           </article>
+          <article class="alignment-card">
+            <h3>Motion Ratio</h3>
+            <strong id="motion-ratio-values">Left — · Right —</strong>
+            <small>Strut travel ÷ vertical wheel travel</small>
+          </article>
+          <article class="alignment-card">
+            <h3>Wheel Rate</h3>
+            <strong id="wheel-rate-values">Left — N/mm · Right — N/mm</strong>
+            <small>Spring rate × motion ratio²</small>
+          </article>
         </div>
       </section>
     </section>
@@ -274,6 +292,8 @@ const toeSidesOutput = document.querySelector<HTMLElement>("#toe-sides")!;
 const camberOutput = document.querySelector<HTMLElement>("#camber-values")!;
 const casterOutput = document.querySelector<HTMLElement>("#caster-values")!;
 const scrubRadiusOutput = document.querySelector<HTMLElement>("#scrub-radius-values")!;
+const motionRatioOutput = document.querySelector<HTMLElement>("#motion-ratio-values")!;
+const wheelRateOutput = document.querySelector<HTMLElement>("#wheel-rate-values")!;
 const widthInput = document.querySelector<HTMLInputElement>("#pickup-width")!;
 const rearWidthInput = document.querySelector<HTMLInputElement>("#pickup-rear-width")!;
 const frontHeightInput = document.querySelector<HTMLInputElement>("#pickup-front-height")!;
@@ -305,11 +325,12 @@ const wheelOffsetInput = document.querySelector<HTMLInputElement>("#wheel-offset
 const wheelDiameterInput = document.querySelector<HTMLInputElement>("#wheel-diameter")!;
 const tireSectionWidthInput = document.querySelector<HTMLInputElement>("#tire-section-width")!;
 const tireAspectRatioInput = document.querySelector<HTMLInputElement>("#tire-aspect-ratio")!;
+const springRateInput = document.querySelector<HTMLInputElement>("#spring-rate")!;
 let viewer: ChassisScene | undefined;
 
 function createProject(name: string): SuspensionProject {
   return {
-    schemaVersion: 21,
+    schemaVersion: 22,
     id: crypto.randomUUID(),
     name,
     frontLowerControlArmPickup: {
@@ -358,6 +379,7 @@ function createProject(name: string): SuspensionProject {
       tireSectionWidthMm: DEFAULT_TIRE_SECTION_WIDTH_MM,
       tireAspectRatio: DEFAULT_TIRE_ASPECT_RATIO,
     },
+    suspension: { springRateNPerMm: DEFAULT_SPRING_RATE_N_PER_MM },
   };
 }
 
@@ -433,6 +455,7 @@ function renderGeometry(): void {
   wheelDiameterInput.value = String(current.wheelTire.wheelDiameterIn);
   tireSectionWidthInput.value = String(current.wheelTire.tireSectionWidthMm);
   tireAspectRatioInput.value = String(current.wheelTire.tireAspectRatio);
+  springRateInput.value = String(current.suspension.springRateNPerMm);
   document.querySelector("#front-point-spacing")!.textContent =
     `${(current.frontLowerControlArmPickup.widthMm * 2).toFixed(0)} mm`;
   viewer?.update(current);
@@ -461,6 +484,8 @@ function renderAlignmentMeasurements(measurements: WheelAlignmentMeasurements | 
     camberOutput.textContent = "Unavailable";
     casterOutput.textContent = "Unavailable";
     scrubRadiusOutput.textContent = "Unavailable";
+    motionRatioOutput.textContent = "Unavailable";
+    wheelRateOutput.textContent = "Unavailable";
     return;
   }
   toeTotalOutput.textContent = measurements.totalToeMm === null
@@ -475,6 +500,14 @@ function renderAlignmentMeasurements(measurements: WheelAlignmentMeasurements | 
     `Left ${measurements.casterDeg[0].toFixed(1)}° · Right ${measurements.casterDeg[1].toFixed(1)}°`;
   scrubRadiusOutput.textContent = measurements.scrubRadiusMm
     .map((value) => value === null ? "—" : `${value.toFixed(1)} mm`)
+    .map((value, index) => `${index === 0 ? "Left" : "Right"} ${value}`)
+    .join(" · ");
+  motionRatioOutput.textContent = measurements.motionRatio
+    .map((value) => value === null ? "—" : value.toFixed(3))
+    .map((value, index) => `${index === 0 ? "Left" : "Right"} ${value}`)
+    .join(" · ");
+  wheelRateOutput.textContent = measurements.wheelRateNPerMm
+    .map((value) => value === null ? "—" : `${value.toFixed(1)} N/mm`)
     .map((value, index) => `${index === 0 ? "Left" : "Right"} ${value}`)
     .join(" · ");
 }
@@ -528,6 +561,7 @@ document.querySelector<HTMLButtonElement>("#reset-project")!.addEventListener("c
     tireSectionWidthMm: DEFAULT_TIRE_SECTION_WIDTH_MM,
     tireAspectRatio: DEFAULT_TIRE_ASPECT_RATIO,
   };
+  current.suspension = { springRateNPerMm: DEFAULT_SPRING_RATE_N_PER_MM };
   renderGeometry();
   if (persistOrNotify()) showNotice("Project dimensions reset to their default values.");
 });
@@ -563,6 +597,19 @@ wheelOffsetInput.addEventListener("change", () => updateWheelTireDimension("whee
 wheelDiameterInput.addEventListener("change", () => updateWheelTireDimension("wheelDiameterIn", wheelDiameterInput));
 tireSectionWidthInput.addEventListener("change", () => updateWheelTireDimension("tireSectionWidthMm", tireSectionWidthInput));
 tireAspectRatioInput.addEventListener("change", () => updateWheelTireDimension("tireAspectRatio", tireAspectRatioInput));
+springRateInput.addEventListener("change", () => updateSpringRate());
+
+function updateSpringRate(): void {
+  const value = Number(springRateInput.value);
+  if (!Number.isFinite(value) || value <= 0) {
+    showNotice("Spring Rate must be a positive finite number.", "error");
+    renderGeometry();
+    return;
+  }
+  current.suspension.springRateNPerMm = value;
+  renderGeometry();
+  persistOrNotify();
+}
 
 function updateDimension(
   key: "widthMm" | "rearWidthMm" | "controlArmDepthMm" | "frontHeightMm" | "rearHeightMm",

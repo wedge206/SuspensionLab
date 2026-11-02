@@ -9,6 +9,7 @@ import {
   steeringKnucklePivotPoints,
   steeringRackPivotPoints,
   steeringRackTravelLimitMm,
+  suspensionMotionRatios,
   strutMountAngleSegments,
   strutMountPoints,
   tireOverallDiameterMm,
@@ -410,6 +411,8 @@ export class ChassisScene {
           hubFace.normal,
           project.wheelTire.wheelOffsetMm,
         )) as [Vec3, Vec3],
+        suspensionMotionRatios(project),
+        project.suspension.springRateNPerMm,
       )
       : null);
     this.hubConstructionLines.geometry.setFromPoints(trueHubFaces.flatMap((hubFace, index) => [

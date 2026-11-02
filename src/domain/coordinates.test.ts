@@ -12,12 +12,14 @@ import {
   strutLengthsMm,
   strutMountAngleSegments,
   strutMountPoints,
+  suspensionMotionRatios,
   tireOverallDiameterMm,
   tireTreadCenter,
   tieRodConstrainedKnucklePoints,
   trueHubFaceGeometry,
   wheelAlignmentMeasurements,
 } from "./coordinates";
+import { validateProject } from "./project";
 
 describe("front lower control arm pickup points", () => {
   it("mirrors each pair by its own width and uses independently specified heights", () => {
@@ -422,6 +424,35 @@ describe("front lower control arm pickup points", () => {
     );
 
     expect(measurements.scrubRadiusMm).toEqual([30, 30]);
+  });
+
+  it("calculates wheel rate as spring rate multiplied by motion ratio squared", () => {
+    const measurements = wheelAlignmentMeasurements(
+      [[0, 1, 0], [0, -1, 0]],
+      [[0, 100, 100], [0, -100, 100]],
+      [[-10, 100, 600], [-10, -100, 600]],
+      634.5,
+      null,
+      [0.8, 1.2],
+      50,
+    );
+
+    expect(measurements.motionRatio).toEqual([0.8, 1.2]);
+    expect(measurements.wheelRateNPerMm).toEqual([32, 72]);
+  });
+
+  it("calculates the local motion ratio from suspension geometry", () => {
+    const project = validateProject({
+      schemaVersion: 2,
+      id: "motion-ratio-test",
+      name: "Motion ratio test",
+    });
+
+    const ratios = suspensionMotionRatios(project);
+    expect(ratios[0]).toEqual(expect.any(Number));
+    expect(ratios[1]).toEqual(expect.any(Number));
+    expect(ratios[0]).toBeGreaterThan(0);
+    expect(ratios[1]).toBeGreaterThan(0);
   });
 
   it("updates toe from the current steering position while keeping current camber", () => {

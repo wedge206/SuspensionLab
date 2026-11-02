@@ -535,14 +535,11 @@ export function wheelAlignmentMeasurements(
   ballJoints: [Vec3, Vec3],
   topMounts: [Vec3, Vec3],
   tireDiameterMm: number,
-  straightAheadWheelFaceNormals: [Vec3, Vec3] | null = wheelFaceNormals,
   tireCenters: [Vec3, Vec3] | null = null,
 ): WheelAlignmentMeasurements {
-  const toeMm = straightAheadWheelFaceNormals
-    ? straightAheadWheelFaceNormals.map((normal) =>
-      normal[0] / Math.abs(normal[1]) * tireDiameterMm
-    ) as [number, number]
-    : null;
+  const toeMm = wheelFaceNormals.map((normal) =>
+    normal[0] / Math.abs(normal[1]) * tireDiameterMm
+  ) as [number, number];
   const camberDeg = wheelFaceNormals.map((normal) =>
     Math.asin(Math.max(-1, Math.min(1, -normal[2]))) * 180 / Math.PI
   ) as [number, number];

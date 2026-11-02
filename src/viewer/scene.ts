@@ -396,54 +396,6 @@ export class ChassisScene {
       project.wheelKnuckle.hubHeightMm,
       project.wheelKnuckle.hubSpacingMm,
     ));
-    let straightAheadFaceNormals: [Vec3, Vec3] | null = null;
-    try {
-      const centeredRackPivots = steeringRackPivotPoints(
-        project.steeringRack.widthMm,
-        project.steeringRack.centerlineHeightMm,
-        project.steeringRack.centerlineOffsetMm,
-      );
-      const centeredKnuckle = tieRodConstrainedKnucklePoints(
-        points.ballJoint,
-        centeredRackPivots,
-        topMounts,
-        project.wheelKnuckle.steeringPivotHeightMm,
-        project.wheelKnuckle.steeringPivotDepthMm,
-        project.wheelKnuckle.steeringPivotOffsetMm,
-        project.wheelKnuckle.strutMountHeightMm,
-        project.wheelKnuckle.strutMountOffsetMm,
-        project.wheelKnuckle.strutMountLocationMm,
-        -project.wheelKnuckle.strutMountAngleDeg,
-        project.steeringRack.tieRodLengthMm,
-        project.wheelKnuckle.strutMinLengthMm,
-        project.wheelKnuckle.strutMaxLengthMm,
-      );
-      const centeredFaces = steeredHubFacePoints(
-        points.ballJoint,
-        neutralSteeringPivots,
-        neutralStrutMounts,
-        project.wheelKnuckle.steeringPivotOffsetMm,
-        project.wheelKnuckle.strutMountLocationMm,
-        centeredKnuckle.orientations,
-      );
-      const centeredTrueFaces = centeredFaces.map((face) => trueHubFaceGeometry(
-        face,
-        project.wheelKnuckle.hubHeightMm,
-        project.wheelKnuckle.hubSpacingMm,
-      ));
-      straightAheadFaceNormals = [
-        centeredTrueFaces[0].normal,
-        centeredTrueFaces[1].normal,
-      ];
-    } catch (error) {
-      if (!(error instanceof Error) ||
-          ![
-            "Tie Rod Length cannot be satisfied at the current ball joint position.",
-            "Strut angle cannot reach the fixed top mount.",
-          ].includes(error.message)) {
-        throw error;
-      }
-    }
     this.onAlignmentUpdate(knuckleValid
       ? wheelAlignmentMeasurements(
         [trueHubFaces[0].normal, trueHubFaces[1].normal],
@@ -454,7 +406,6 @@ export class ChassisScene {
           project.wheelTire.tireSectionWidthMm,
           project.wheelTire.tireAspectRatio,
         ),
-        straightAheadFaceNormals,
         trueHubFaces.map((hubFace) => tireTreadCenter(
           hubFace.center,
           hubFace.normal,

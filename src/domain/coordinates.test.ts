@@ -400,7 +400,7 @@ describe("front lower control arm pickup points", () => {
       634.5,
     );
     if (!measurements.toeMm || measurements.totalToeMm === null) {
-      throw new Error("Toe should be available for straight-ahead wheel normals.");
+      throw new Error("Toe should be available for the current wheel normals.");
     }
 
     expect(measurements.toeMm[0]).toBeCloseTo(Math.tan(toeRad) * 634.5);
@@ -419,16 +419,13 @@ describe("front lower control arm pickup points", () => {
       [[0, 100, 100], [0, -100, 100]],
       [[-10, 100, 600], [-10, -100, 600]],
       634.5,
-      undefined,
       [[0, 130, 300], [0, -130, 300]],
     );
 
     expect(measurements.scrubRadiusMm).toEqual([30, 30]);
   });
 
-  it("uses straight-ahead wheel normals for toe while keeping current camber", () => {
-    const straightNormals: [[number, number, number], [number, number, number]] =
-      [[0, 1, 0], [0, -1, 0]];
+  it("updates toe from the current steering position while keeping current camber", () => {
     const turnedNormals: [[number, number, number], [number, number, number]] =
       [[0.2, 0.98, 0], [0.2, -0.98, -0.1]];
     const measurements = wheelAlignmentMeasurements(
@@ -436,11 +433,11 @@ describe("front lower control arm pickup points", () => {
       [[0, 100, 100], [0, -100, 100]],
       [[0, 100, 600], [0, -100, 600]],
       634.5,
-      straightNormals,
     );
 
-    expect(measurements.toeMm).toEqual([0, 0]);
-    expect(measurements.totalToeMm).toBe(0);
+    expect(measurements.toeMm?.[0]).toBeCloseTo(0.2 / 0.98 * 634.5);
+    expect(measurements.toeMm?.[1]).toBeCloseTo(0.2 / 0.98 * 634.5);
+    expect(measurements.totalToeMm).toBeCloseTo(2 * 0.2 / 0.98 * 634.5);
     expect(measurements.camberDeg[0]).toBe(0);
     expect(measurements.camberDeg[1]).not.toBe(0);
   });

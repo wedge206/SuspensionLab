@@ -138,6 +138,16 @@ export class ChassisScene {
       new THREE.MeshStandardMaterial({ color: 0x303536, roughness: 0.92, side: THREE.DoubleSide }),
     ),
   ];
+  private readonly tireGroundOutlines = [
+    new THREE.LineLoop(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({ color: 0x7be0e6, depthTest: false }),
+    ),
+    new THREE.LineLoop(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({ color: 0xe7a7d2, depthTest: false }),
+    ),
+  ];
   private readonly controlArmFirstSides = new THREE.LineSegments(
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0xf0c27e }),
@@ -245,6 +255,7 @@ export class ChassisScene {
       this.hubConstructionLines,
       ...this.hubFaceCircles,
       ...this.tireTreads,
+      ...this.tireGroundOutlines,
     );
     this.hubFaces.forEach((face) => {
       face.renderOrder = 2;
@@ -475,6 +486,24 @@ export class ChassisScene {
         project.wheelTire.tireAspectRatio,
       ) / 2;
       tire.scale.set(radius, project.wheelTire.tireSectionWidthMm, radius);
+      const horizontalNormalLength = Math.hypot(hubFace.normal[0], hubFace.normal[1]);
+      const widthDirection = new THREE.Vector2(
+        hubFace.normal[0] / horizontalNormalLength,
+        hubFace.normal[1] / horizontalNormalLength,
+      );
+      const lengthDirection = new THREE.Vector2(-widthDirection.y, widthDirection.x);
+      const groundCenter = new THREE.Vector2(center[0], center[1]);
+      const halfWidth = project.wheelTire.tireSectionWidthMm / 2;
+      const halfLength = radius;
+      const corners = [
+        groundCenter.clone().addScaledVector(lengthDirection, halfLength).addScaledVector(widthDirection, halfWidth),
+        groundCenter.clone().addScaledVector(lengthDirection, halfLength).addScaledVector(widthDirection, -halfWidth),
+        groundCenter.clone().addScaledVector(lengthDirection, -halfLength).addScaledVector(widthDirection, -halfWidth),
+        groundCenter.clone().addScaledVector(lengthDirection, -halfLength).addScaledVector(widthDirection, halfWidth),
+      ];
+      const groundOutline = this.tireGroundOutlines[index];
+      groundOutline.geometry.setFromPoints(corners.map((corner) => new THREE.Vector3(corner.x, corner.y, 1)));
+      groundOutline.geometry.computeBoundingSphere();
     });
     this.hubFaceExtensions.geometry.setFromPoints([
       new THREE.Vector3(...steeringPivots[0]),
@@ -645,6 +674,10 @@ export class ChassisScene {
       tire.geometry.dispose();
       tire.material.dispose();
     }
+    for (const outline of this.tireGroundOutlines) {
+      outline.geometry.dispose();
+      outline.material.dispose();
+    }
     this.controlArmFirstSides.geometry.dispose();
     this.controlArmFirstSides.material.dispose();
     this.steeringRack.geometry.dispose();
@@ -668,6 +701,7 @@ export class ChassisScene {
     this.steeringPivots.forEach((point) => { point.visible = visible; });
     this.hubFaces.forEach((face) => { face.visible = visible; });
     this.tireTreads.forEach((tire) => { tire.visible = visible; });
+    this.tireGroundOutlines.forEach((outline) => { outline.visible = visible; });
     this.hubFaceExtensions.visible = visible;
     this.tieRods.visible = visible;
     this.struts.forEach((strut) => { strut.visible = visible; });

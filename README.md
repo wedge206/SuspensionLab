@@ -2,6 +2,8 @@
 
 Suspension Lab is a browser-based workbench for building an editable front suspension geometry model incrementally. It includes mirrored control arms and ball joints, a steering rack with fixed-length tie rods, wheel/knuckle geometry, struts, top mounts, and a centered illustrative chassis frame.
 
+[Open Suspension Lab](https://wedge206.github.io/SuspensionLab/)
+
 ## Run locally
 
 Install Node.js 20.19+ or 22.12+, then run:

@@ -19,10 +19,9 @@ import {
 } from "../domain/coordinates";
 import {
   DEFAULT_CONTROL_ARM_DEPTH_MM,
-  DEFAULT_CONTROL_ARM_ROTATION_RAD,
   DEFAULT_FRONT_PICKUP_HEIGHT_MM,
 } from "../domain/project";
-import type { SuspensionProject } from "../domain/types";
+import type { SuspensionProject, Vec3 } from "../domain/types";
 import type { WheelAlignmentMeasurements } from "../domain/coordinates";
 
 const FRAME_HALF_LENGTH = 850;
@@ -645,7 +644,7 @@ export class ChassisScene {
     this.strutMountAngleMarkers.geometry.dispose();
     this.strutMountAngleMarkers.material.dispose();
     this.frame.geometry.dispose();
-    this.frame.material.dispose();
+    (this.frame.material as THREE.LineBasicMaterial).dispose();
     this.host.replaceChildren();
   }
 
@@ -824,7 +823,9 @@ export class ChassisScene {
     );
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster.intersectObjects(this.ballJoints, false)[0];
-    return hit ? this.ballJoints.indexOf(hit.object as THREE.Mesh) : null;
+    if (!hit) return null;
+    const index = this.ballJoints.findIndex((joint) => joint.uuid === hit.object.uuid);
+    return index < 0 ? null : index;
   }
 
   private intersectSteeringRackPivot(event: PointerEvent): number | null {
@@ -835,7 +836,9 @@ export class ChassisScene {
     );
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster.intersectObjects(this.steeringRackPivots, false)[0];
-    return hit ? this.steeringRackPivots.indexOf(hit.object as THREE.Mesh) : null;
+    if (!hit) return null;
+    const index = this.steeringRackPivots.findIndex((pivot) => pivot.uuid === hit.object.uuid);
+    return index < 0 ? null : index;
   }
 
   private dragConstraintViolation(index: number, angle: number): [number, number] {

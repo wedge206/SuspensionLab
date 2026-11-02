@@ -5,7 +5,6 @@ import {
   type HubOrientation,
   hubFacePoints,
   orientHubPoint,
-  rotatePointAroundAxis,
   steeringKnucklePivotPoints,
   steeringRackPivotPoints,
   steeringRackTravelLimitMm,

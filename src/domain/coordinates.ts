@@ -549,7 +549,7 @@ export function wheelAlignmentMeasurements(
       topMounts[index][2] - ballJoint[2],
     ) * 180 / Math.PI
   ) as [number, number];
-  const scrubRadiusMm = tireCenters
+  const scrubRadiusMm: [number | null, number | null] = tireCenters
     ? ballJoints.map((ballJoint, index) => {
       const verticalAxisSpan = topMounts[index][2] - ballJoint[2];
       if (Math.abs(verticalAxisSpan) < 1e-9) return null;

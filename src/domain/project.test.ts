@@ -141,7 +141,7 @@ describe("chassis project format", () => {
       id: "wheel-tire-migration",
       name: "Wheel and tire migration",
     });
-    const v20Project: Record<string, unknown> = structuredClone(currentProject);
+    const v20Project: Record<string, unknown> = { ...structuredClone(currentProject) };
     delete v20Project.wheelTire;
     v20Project.schemaVersion = 20;
     expect(validateProject(v20Project).wheelTire).toEqual({

@@ -266,7 +266,7 @@ export class ChassisScene {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0, 280);
     this.controls.enableDamping = true;
-    this.renderer.domElement.style.cursor = "grab";
+    this.renderer.domElement.style.cursor = "default";
     this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown, true);
     this.renderer.domElement.addEventListener("pointermove", this.onPointerMove, true);
     this.renderer.domElement.addEventListener("pointerup", this.onPointerUp, true);
@@ -795,7 +795,7 @@ export class ChassisScene {
       const changed = this.dragRackChanged;
       this.draggingSteeringRackPivotIndex = null;
       this.controls.enabled = true;
-      this.renderer.domElement.style.cursor = "grab";
+      this.updatePointerCursor();
       if (this.renderer.domElement.hasPointerCapture(event.pointerId)) {
         this.renderer.domElement.releasePointerCapture(event.pointerId);
       }
@@ -810,11 +810,12 @@ export class ChassisScene {
     const changed = this.dragChanged;
     this.draggingBallJointIndex = null;
     this.controls.enabled = true;
-    this.renderer.domElement.style.cursor = "grab";
+    this.updatePointerCursor();
     if (this.renderer.domElement.hasPointerCapture(event.pointerId)) {
       this.renderer.domElement.releasePointerCapture(event.pointerId);
     }
     this.setHoveredBallJoint(this.intersectBallJoint(event));
+    this.setHoveredSteeringRackPivot(this.intersectSteeringRackPivot(event));
     if (changed) this.onProjectChange();
   }
 
@@ -927,7 +928,10 @@ export class ChassisScene {
   }
 
   private setHoveredBallJoint(index: number | null): void {
-    if (this.hoveredBallJointIndex === index) return;
+    if (this.hoveredBallJointIndex === index) {
+      this.updatePointerCursor();
+      return;
+    }
     if (this.hoveredBallJointIndex !== null) {
       const previous = this.ballJoints[this.hoveredBallJointIndex];
       (previous.material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
@@ -938,14 +942,15 @@ export class ChassisScene {
       const hovered = this.ballJoints[index];
       (hovered.material as THREE.MeshStandardMaterial).emissive.setHex(0x8a3020);
       hovered.scale.setScalar(1.45);
-      this.renderer.domElement.style.cursor = "grab";
-    } else if (this.draggingBallJointIndex === null) {
-      this.renderer.domElement.style.cursor = "grab";
     }
+    this.updatePointerCursor();
   }
 
   private setHoveredSteeringRackPivot(index: number | null): void {
-    if (this.hoveredSteeringRackPivotIndex === index) return;
+    if (this.hoveredSteeringRackPivotIndex === index) {
+      this.updatePointerCursor();
+      return;
+    }
     if (this.hoveredSteeringRackPivotIndex !== null) {
       const previous = this.steeringRackPivots[this.hoveredSteeringRackPivotIndex];
       (previous.material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
@@ -956,10 +961,18 @@ export class ChassisScene {
       const hovered = this.steeringRackPivots[index];
       (hovered.material as THREE.MeshStandardMaterial).emissive.setHex(0x8a3020);
       hovered.scale.setScalar(1.45);
-      this.renderer.domElement.style.cursor = "grab";
-    } else if (this.draggingSteeringRackPivotIndex === null) {
-      this.renderer.domElement.style.cursor = "grab";
     }
+    this.updatePointerCursor();
+  }
+
+  private updatePointerCursor(): void {
+    const dragging = this.draggingBallJointIndex !== null ||
+      this.draggingSteeringRackPivotIndex !== null;
+    const hoveringDraggable = this.hoveredBallJointIndex !== null ||
+      this.hoveredSteeringRackPivotIndex !== null;
+    this.renderer.domElement.style.cursor = dragging
+      ? "grabbing"
+      : hoveringDraggable ? "grab" : "default";
   }
 
   private createGroundGrid(): THREE.Group {

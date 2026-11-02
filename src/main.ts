@@ -243,6 +243,10 @@ app.innerHTML = `
     </aside>
     <section class="analysis-area">
       <div class="viewport" id="viewport" aria-label="3D suspension model with control arms, tie rods, knuckles, and struts">
+        <label class="virtual-geometry-toggle" for="show-scrub-geometry">
+          <input id="show-scrub-geometry" type="checkbox" checked />
+          <span>Show virtual geometry</span>
+        </label>
         <div class="viewport-hint">Drag to orbit · hover and drag a ball joint vertically to move the arm</div>
       </div>
       <section class="alignment-panel" aria-labelledby="alignment-heading">
@@ -326,6 +330,8 @@ const wheelDiameterInput = document.querySelector<HTMLInputElement>("#wheel-diam
 const tireSectionWidthInput = document.querySelector<HTMLInputElement>("#tire-section-width")!;
 const tireAspectRatioInput = document.querySelector<HTMLInputElement>("#tire-aspect-ratio")!;
 const springRateInput = document.querySelector<HTMLInputElement>("#spring-rate")!;
+const scrubGeometryToggle = document.querySelector<HTMLInputElement>("#show-scrub-geometry")!;
+let scrubGeometryVisible = scrubGeometryToggle.checked;
 let viewer: ChassisScene | undefined;
 
 function createProject(name: string): SuspensionProject {
@@ -471,6 +477,11 @@ void import("./viewer/scene").then(({ ChassisScene: Scene }) => {
     (message, type) => showNotice(message, type),
     renderAlignmentMeasurements,
   );
+  viewer.setScrubRadiusGeometryVisible(scrubGeometryVisible);
+  scrubGeometryToggle.addEventListener("change", () => {
+    scrubGeometryVisible = scrubGeometryToggle.checked;
+    viewer?.setScrubRadiusGeometryVisible(scrubGeometryVisible);
+  });
   viewer.update(current);
 }).catch(() => {
   document.querySelector("#viewport")!.innerHTML =

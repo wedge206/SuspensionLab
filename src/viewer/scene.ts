@@ -44,6 +44,8 @@ export class ChassisScene {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private project?: SuspensionProject;
+  private scrubRadiusGeometryVisible = true;
+  private scrubRadiusGeometryAvailable: [boolean, boolean] = [false, false];
   private hoveredBallJointIndex: number | null = null;
   private hoveredSteeringRackPivotIndex: number | null = null;
   private draggingBallJointIndex: number | null = null;
@@ -146,6 +148,26 @@ export class ChassisScene {
     new THREE.LineLoop(
       new THREE.BufferGeometry(),
       new THREE.LineBasicMaterial({ color: 0xe7a7d2, depthTest: false }),
+    ),
+  ];
+  private readonly steeringAxisGroundLines = [
+    new THREE.Line(
+      new THREE.BufferGeometry(),
+      new THREE.LineDashedMaterial({ color: 0xf2c66d, dashSize: 24, gapSize: 14, depthTest: false }),
+    ),
+    new THREE.Line(
+      new THREE.BufferGeometry(),
+      new THREE.LineDashedMaterial({ color: 0xf2c66d, dashSize: 24, gapSize: 14, depthTest: false }),
+    ),
+  ];
+  private readonly tireCenterGroundLines = [
+    new THREE.Line(
+      new THREE.BufferGeometry(),
+      new THREE.LineDashedMaterial({ color: 0x7be0e6, dashSize: 24, gapSize: 14, depthTest: false }),
+    ),
+    new THREE.Line(
+      new THREE.BufferGeometry(),
+      new THREE.LineDashedMaterial({ color: 0xe7a7d2, dashSize: 24, gapSize: 14, depthTest: false }),
     ),
   ];
   private readonly controlArmFirstSides = new THREE.LineSegments(
@@ -256,7 +278,12 @@ export class ChassisScene {
       ...this.hubFaceCircles,
       ...this.tireTreads,
       ...this.tireGroundOutlines,
+      ...this.steeringAxisGroundLines,
+      ...this.tireCenterGroundLines,
     );
+    [...this.steeringAxisGroundLines, ...this.tireCenterGroundLines].forEach((line) => {
+      line.renderOrder = 4;
+    });
     this.hubFaces.forEach((face) => {
       face.renderOrder = 2;
     });
@@ -396,6 +423,45 @@ export class ChassisScene {
       project.wheelKnuckle.hubHeightMm,
       project.wheelKnuckle.hubSpacingMm,
     ));
+    trueHubFaces.forEach((hubFace, index) => {
+      const verticalAxisSpan = topMounts[index][2] - points.ballJoint[index][2];
+      const steeringAxisLine = this.steeringAxisGroundLines[index];
+      const tireCenterLine = this.tireCenterGroundLines[index];
+      if (!knuckleValid || Math.abs(verticalAxisSpan) < 1e-9) {
+        this.scrubRadiusGeometryAvailable[index] = false;
+        steeringAxisLine.visible = false;
+        tireCenterLine.visible = false;
+        return;
+      }
+      this.scrubRadiusGeometryAvailable[index] = true;
+
+      const groundIntersectionRatio = -points.ballJoint[index][2] / verticalAxisSpan;
+      const steeringAxisGroundPoint = new THREE.Vector3(
+        points.ballJoint[index][0] +
+          (topMounts[index][0] - points.ballJoint[index][0]) * groundIntersectionRatio,
+        points.ballJoint[index][1] +
+          (topMounts[index][1] - points.ballJoint[index][1]) * groundIntersectionRatio,
+        0,
+      );
+      steeringAxisLine.geometry.setFromPoints([
+        new THREE.Vector3(...topMounts[index]),
+        steeringAxisGroundPoint,
+      ]);
+      steeringAxisLine.computeLineDistances();
+      steeringAxisLine.visible = this.scrubRadiusGeometryVisible;
+
+      const tireCenter = tireTreadCenter(
+        hubFace.center,
+        hubFace.normal,
+        project.wheelTire.wheelOffsetMm,
+      );
+      tireCenterLine.geometry.setFromPoints([
+        new THREE.Vector3(...tireCenter),
+        new THREE.Vector3(tireCenter[0], tireCenter[1], 0),
+      ]);
+      tireCenterLine.computeLineDistances();
+      tireCenterLine.visible = this.scrubRadiusGeometryVisible;
+    });
     this.onAlignmentUpdate(knuckleValid
       ? wheelAlignmentMeasurements(
         [trueHubFaces[0].normal, trueHubFaces[1].normal],
@@ -534,6 +600,7 @@ export class ChassisScene {
       );
       this.lastGeometryMessage = geometryStatusKey;
     }
+
     const rackStart = new THREE.Vector3(...rackPivots[0]);
     const rackEnd = new THREE.Vector3(...rackPivots[1]);
     const housingHalfWidth = project.steeringRack.housingWidthMm / 2;
@@ -579,6 +646,16 @@ export class ChassisScene {
       new THREE.Vector3(...points.rear[1]),
     ]);
     this.controlArmFirstSides.geometry.computeBoundingSphere();
+  }
+
+  setScrubRadiusGeometryVisible(visible: boolean): void {
+    this.scrubRadiusGeometryVisible = visible;
+    this.steeringAxisGroundLines.forEach((line, index) => {
+      line.visible = visible && this.scrubRadiusGeometryAvailable[index];
+    });
+    this.tireCenterGroundLines.forEach((line, index) => {
+      line.visible = visible && this.scrubRadiusGeometryAvailable[index];
+    });
   }
 
   dispose(): void {
@@ -631,6 +708,10 @@ export class ChassisScene {
     for (const outline of this.tireGroundOutlines) {
       outline.geometry.dispose();
       outline.material.dispose();
+    }
+    for (const line of [...this.steeringAxisGroundLines, ...this.tireCenterGroundLines]) {
+      line.geometry.dispose();
+      line.material.dispose();
     }
     this.controlArmFirstSides.geometry.dispose();
     this.controlArmFirstSides.material.dispose();

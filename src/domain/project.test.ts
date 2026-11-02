@@ -34,9 +34,9 @@ describe("chassis project format", () => {
       housingWidthMm: 500,
       steeringLimiterMm: 10,
       rackTravelMm: 0,
-      tieRodLengthMm: 341,
+      tieRodLengthMm: 338,
     });
-    expect(project.frontTopMount).toEqual({ heightMm: 900, widthMm: 950, offsetMm: 10 });
+    expect(project.frontTopMount).toEqual({ heightMm: 900, widthMm: 960, offsetMm: 30 });
     expect(project.wheelKnuckle).toEqual({
       steeringPivotHeightMm: 125,
       steeringPivotDepthMm: 210,
@@ -44,7 +44,7 @@ describe("chassis project format", () => {
       strutMountHeightMm: 130,
       strutMountOffsetMm: -10,
       strutMountLocationMm: -89,
-      strutMountAngleDeg: 15,
+      strutMountAngleDeg: 20,
       strutMaxLengthMm: 650,
       strutMinLengthMm: 450,
       hubHeightMm: 60,
@@ -110,7 +110,7 @@ describe("chassis project format", () => {
         housingWidthMm: 500,
         steeringLimiterMm: 10,
         rackTravelMm: 0,
-        tieRodLengthMm: 341,
+        tieRodLengthMm: 338,
       },
       frontTopMount: { heightMm: 920, widthMm: 980, offsetMm: 25 },
       wheelKnuckle: {
@@ -120,7 +120,7 @@ describe("chassis project format", () => {
         strutMountHeightMm: 145,
         strutMountOffsetMm: 12,
         strutMountLocationMm: 95,
-        strutMountAngleDeg: 15,
+        strutMountAngleDeg: 20,
         strutMaxLengthMm: 650,
         strutMinLengthMm: 450,
         hubHeightMm: 60,
@@ -256,7 +256,7 @@ describe("chassis project format", () => {
     });
 
     expect(project.schemaVersion).toBe(21);
-    expect(project.steeringRack.tieRodLengthMm).toBe(341);
+    expect(project.steeringRack.tieRodLengthMm).toBe(338);
     expect(project.steeringRack.housingWidthMm).toBe(500);
     expect(project.steeringRack.steeringLimiterMm).toBe(10);
   });
@@ -304,7 +304,7 @@ describe("chassis project format", () => {
       strutMountHeightMm: 130,
       strutMountOffsetMm: -10,
       strutMountLocationMm: -89,
-      strutMountAngleDeg: 15,
+      strutMountAngleDeg: 20,
       strutMaxLengthMm: 650,
       strutMinLengthMm: 450,
       hubHeightMm: 60,
@@ -489,9 +489,9 @@ describe("chassis project format", () => {
       housingWidthMm: 500,
       steeringLimiterMm: 10,
       rackTravelMm: 0,
-      tieRodLengthMm: 341,
+      tieRodLengthMm: 338,
     });
-    expect(project.frontTopMount).toEqual({ heightMm: 900, widthMm: 950, offsetMm: 10 });
+    expect(project.frontTopMount).toEqual({ heightMm: 900, widthMm: 960, offsetMm: 30 });
   });
 
   it("preserves v10 dimensions and initializes control-arm rotation angles", () => {
@@ -527,7 +527,7 @@ describe("chassis project format", () => {
       strutMountHeightMm: 130,
       strutMountOffsetMm: -10,
       strutMountLocationMm: -89,
-      strutMountAngleDeg: 15,
+      strutMountAngleDeg: 20,
       strutMaxLengthMm: 650,
       strutMinLengthMm: 450,
       hubHeightMm: 60,
@@ -568,7 +568,7 @@ describe("chassis project format", () => {
       strutMountHeightMm: 130,
       strutMountOffsetMm: -10,
       strutMountLocationMm: -89,
-      strutMountAngleDeg: 15,
+      strutMountAngleDeg: 20,
       strutMaxLengthMm: 650,
       strutMinLengthMm: 450,
       hubHeightMm: 60,
@@ -611,7 +611,7 @@ describe("chassis project format", () => {
       strutMountHeightMm: 130,
       strutMountOffsetMm: -10,
       strutMountLocationMm: -89,
-      strutMountAngleDeg: 15,
+      strutMountAngleDeg: 20,
       strutMaxLengthMm: 650,
       strutMinLengthMm: 450,
       hubHeightMm: 60,
@@ -647,9 +647,9 @@ describe("chassis project format", () => {
       housingWidthMm: 500,
       steeringLimiterMm: 10,
       rackTravelMm: 0,
-      tieRodLengthMm: 341,
+      tieRodLengthMm: 338,
     });
-    expect(project.frontTopMount).toEqual({ heightMm: 900, widthMm: 950, offsetMm: 10 });
+    expect(project.frontTopMount).toEqual({ heightMm: 900, widthMm: 960, offsetMm: 30 });
     expect(project.wheelKnuckle).toEqual({
       steeringPivotHeightMm: 125,
       steeringPivotDepthMm: 210,
@@ -657,7 +657,7 @@ describe("chassis project format", () => {
       strutMountHeightMm: 130,
       strutMountOffsetMm: -10,
       strutMountLocationMm: -89,
-      strutMountAngleDeg: 15,
+      strutMountAngleDeg: 20,
       strutMaxLengthMm: 650,
       strutMinLengthMm: 450,
       hubHeightMm: 60,

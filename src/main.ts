@@ -162,7 +162,7 @@ app.innerHTML = `
         </label>
         <label class="dimension-field" for="tie-rod-length">
           <span><strong>Tie Rod Length</strong><small>Fixed length from rack pivot to steering pivot</small></span>
-          <span class="dimension-input"><input id="tie-rod-length" type="number" min="1" step="1" /> <small>mm</small></span>
+          <span class="dimension-input"><input id="tie-rod-length" type="number" min="1" step="0.1" /> <small>mm</small></span>
         </label>
       </section>
       <section class="build-sequence">
@@ -408,7 +408,7 @@ function renderGeometry(): void {
   steeringRackOffsetInput.value = String(current.steeringRack.centerlineOffsetMm);
   steeringHousingWidthInput.value = String(current.steeringRack.housingWidthMm);
   steeringLimiterInput.value = String(current.steeringRack.steeringLimiterMm);
-  tieRodLengthInput.value = String(current.steeringRack.tieRodLengthMm);
+  tieRodLengthInput.value = current.steeringRack.tieRodLengthMm.toFixed(1);
   topMountHeightInput.value = String(current.frontTopMount.heightMm);
   topMountWidthInput.value = String(current.frontTopMount.widthMm);
   topMountOffsetInput.value = String(current.frontTopMount.offsetMm);

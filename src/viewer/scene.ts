@@ -455,6 +455,11 @@ export class ChassisScene {
           project.wheelTire.tireAspectRatio,
         ),
         straightAheadFaceNormals,
+        trueHubFaces.map((hubFace) => tireTreadCenter(
+          hubFace.center,
+          hubFace.normal,
+          project.wheelTire.wheelOffsetMm,
+        )) as [Vec3, Vec3],
       )
       : null);
     this.hubConstructionLines.geometry.setFromPoints(trueHubFaces.flatMap((hubFace, index) => [
@@ -470,12 +475,8 @@ export class ChassisScene {
       );
       this.hubFaceCircles[index].geometry.computeBoundingSphere();
       const tire = this.tireTreads[index];
-      const center = tireTreadCenter(
-        hubFace.center,
-        hubFace.normal,
-        project.wheelTire.wheelOffsetMm,
-      );
-      tire.position.set(...center);
+      const tireCenter = tireTreadCenter(hubFace.center, hubFace.normal, project.wheelTire.wheelOffsetMm);
+      tire.position.set(...tireCenter);
       tire.quaternion.setFromUnitVectors(
         new THREE.Vector3(0, 1, 0),
         new THREE.Vector3(...hubFace.normal).normalize(),
@@ -492,7 +493,7 @@ export class ChassisScene {
         hubFace.normal[1] / horizontalNormalLength,
       );
       const lengthDirection = new THREE.Vector2(-widthDirection.y, widthDirection.x);
-      const groundCenter = new THREE.Vector2(center[0], center[1]);
+      const groundCenter = new THREE.Vector2(tireCenter[0], tireCenter[1]);
       const halfWidth = project.wheelTire.tireSectionWidthMm / 2;
       const halfLength = radius;
       const corners = [

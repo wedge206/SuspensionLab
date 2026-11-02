@@ -527,6 +527,7 @@ export interface WheelAlignmentMeasurements {
   totalToeMm: number | null;
   camberDeg: [number, number];
   casterDeg: [number, number];
+  scrubRadiusMm: [number | null, number | null];
 }
 
 export function wheelAlignmentMeasurements(
@@ -535,6 +536,7 @@ export function wheelAlignmentMeasurements(
   topMounts: [Vec3, Vec3],
   tireDiameterMm: number,
   straightAheadWheelFaceNormals: [Vec3, Vec3] | null = wheelFaceNormals,
+  tireCenters: [Vec3, Vec3] | null = null,
 ): WheelAlignmentMeasurements {
   const toeMm = straightAheadWheelFaceNormals
     ? straightAheadWheelFaceNormals.map((normal) =>
@@ -550,10 +552,22 @@ export function wheelAlignmentMeasurements(
       topMounts[index][2] - ballJoint[2],
     ) * 180 / Math.PI
   ) as [number, number];
+  const scrubRadiusMm = tireCenters
+    ? ballJoints.map((ballJoint, index) => {
+      const verticalAxisSpan = topMounts[index][2] - ballJoint[2];
+      if (Math.abs(verticalAxisSpan) < 1e-9) return null;
+      const groundIntersectionRatio = -ballJoint[2] / verticalAxisSpan;
+      const steeringAxisGroundY = ballJoint[1] +
+        (topMounts[index][1] - ballJoint[1]) * groundIntersectionRatio;
+      const outwardSign = index === 0 ? 1 : -1;
+      return (tireCenters[index][1] - steeringAxisGroundY) * outwardSign;
+    }) as [number | null, number | null]
+    : [null, null];
   return {
     toeMm,
     totalToeMm: toeMm ? toeMm[0] + toeMm[1] : null,
     camberDeg,
     casterDeg,
+    scrubRadiusMm,
   };
 }

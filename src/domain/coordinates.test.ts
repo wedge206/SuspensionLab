@@ -410,6 +410,20 @@ describe("front lower control arm pickup points", () => {
     expect(measurements.camberDeg[1]).toBeCloseTo(4);
     expect(measurements.casterDeg[0]).toBeCloseTo(Math.atan2(10, 500) * 180 / Math.PI);
     expect(measurements.casterDeg[1]).toBeCloseTo(Math.atan2(10, 500) * 180 / Math.PI);
+    expect(measurements.scrubRadiusMm).toEqual([null, null]);
+  });
+
+  it("calculates scrub radius from the steering-axis ground intersection to each tire centerline", () => {
+    const measurements = wheelAlignmentMeasurements(
+      [[0, 1, 0], [0, -1, 0]],
+      [[0, 100, 100], [0, -100, 100]],
+      [[-10, 100, 600], [-10, -100, 600]],
+      634.5,
+      undefined,
+      [[0, 130, 300], [0, -130, 300]],
+    );
+
+    expect(measurements.scrubRadiusMm).toEqual([30, 30]);
   });
 
   it("uses straight-ahead wheel normals for toe while keeping current camber", () => {

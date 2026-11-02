@@ -255,6 +255,11 @@ app.innerHTML = `
             <strong id="caster-values">Left —° · Right —°</strong>
             <small>Steering axis angle from vertical</small>
           </article>
+          <article class="alignment-card">
+            <h3>Scrub Radius</h3>
+            <strong id="scrub-radius-values">Left — mm · Right — mm</strong>
+            <small>Tire centerline to steering-axis ground intersection</small>
+          </article>
         </div>
       </section>
     </section>
@@ -268,6 +273,7 @@ const toeTotalOutput = document.querySelector<HTMLElement>("#toe-total")!;
 const toeSidesOutput = document.querySelector<HTMLElement>("#toe-sides")!;
 const camberOutput = document.querySelector<HTMLElement>("#camber-values")!;
 const casterOutput = document.querySelector<HTMLElement>("#caster-values")!;
+const scrubRadiusOutput = document.querySelector<HTMLElement>("#scrub-radius-values")!;
 const widthInput = document.querySelector<HTMLInputElement>("#pickup-width")!;
 const rearWidthInput = document.querySelector<HTMLInputElement>("#pickup-rear-width")!;
 const frontHeightInput = document.querySelector<HTMLInputElement>("#pickup-front-height")!;
@@ -454,6 +460,7 @@ function renderAlignmentMeasurements(measurements: WheelAlignmentMeasurements | 
     toeSidesOutput.textContent = "Geometry constraints cannot be satisfied";
     camberOutput.textContent = "Unavailable";
     casterOutput.textContent = "Unavailable";
+    scrubRadiusOutput.textContent = "Unavailable";
     return;
   }
   toeTotalOutput.textContent = measurements.totalToeMm === null
@@ -466,6 +473,10 @@ function renderAlignmentMeasurements(measurements: WheelAlignmentMeasurements | 
     `Left ${measurements.camberDeg[0].toFixed(1)}° · Right ${measurements.camberDeg[1].toFixed(1)}°`;
   casterOutput.textContent =
     `Left ${measurements.casterDeg[0].toFixed(1)}° · Right ${measurements.casterDeg[1].toFixed(1)}°`;
+  scrubRadiusOutput.textContent = measurements.scrubRadiusMm
+    .map((value) => value === null ? "—" : `${value.toFixed(1)} mm`)
+    .map((value, index) => `${index === 0 ? "Left" : "Right"} ${value}`)
+    .join(" · ");
 }
 
 projectSelect.addEventListener("change", () => selectProject(projectSelect.value));

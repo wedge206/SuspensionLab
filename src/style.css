@@ -57,6 +57,15 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .point-spacing { display: flex; justify-content: space-between; margin: 13px 0 0; color: #91a09c; font-size: 10px; }
 .point-spacing strong { color: #e4ab61; font-family: var(--mono); font-weight: 500; }
 .sidebar-footnote { margin: 20px 0 0; color: #84918e; font-size: 10px; line-height: 1.6; }
+.tabs-container { margin-top: 20px; }
+.tabs-header { display: flex; gap: 0; border-bottom: 1px solid #303a3d; }
+.tab-button { background: transparent; border: 1px solid transparent; border-bottom-width: 2px; border-bottom-color: #303a3d; padding: 10px 12px; color: #91a09c; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .2s; }
+.tab-button:hover { color: #a4b5ad; }
+.tab-button.active { color: #e7ece9; border-bottom-color: #85b59e; }
+.tabs-content { margin-top: 0; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+.rear-placeholder { padding: 20px 0; color: #84918e; font-size: 12px; text-align: center; font-style: italic; }
 .analysis-area { min-width: 0; padding: 0 25px 28px; }
 .canvas-status { display: flex; align-items: center; gap: 7px; color: #9aa8a3; font-size: 10px; }
 .canvas-status i { width: 7px; height: 7px; border-radius: 50%; background: #64736e; }

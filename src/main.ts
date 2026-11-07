@@ -92,6 +92,13 @@ app.innerHTML = `
         <span class="layout-badge">Front view</span>
       </div>
       <div class="coordinate-note"><span class="axis-icon">XYZ</span><span><strong>Ground-based dimensions</strong><small>Height is measured from the ground plane</small></span></div>
+      <div class="tabs-container">
+        <div class="tabs-header">
+          <button class="tab-button active" data-tab="front">Front</button>
+          <button class="tab-button" data-tab="rear">Rear</button>
+        </div>
+        <div class="tabs-content">
+          <div class="tab-pane active" id="tab-front">
       <section class="build-sequence">
         <div class="geometry-heading"><h2>Front chassis</h2><span>Left & right</span></div>
         <label class="dimension-field" for="pickup-width">
@@ -240,6 +247,12 @@ app.innerHTML = `
         </label>
       </section>
       <p class="sidebar-footnote">Front and rear mount pairs are mirrored equally across the centerline; each mount station has its own height. Strut lengths run from the moving strut mounts to the fixed top mounts and are checked against the configured travel limits.</p>
+          </div>
+          <div class="tab-pane" id="tab-rear">
+            <p class="rear-placeholder">Rear suspension configuration coming soon...</p>
+          </div>
+        </div>
+      </div>
     </aside>
     <section class="analysis-area">
       <div class="viewport" id="viewport" aria-label="3D suspension model with control arms, tie rods, knuckles, and struts">
@@ -469,6 +482,33 @@ function renderGeometry(): void {
 
 renderProjectSelect();
 renderGeometry();
+
+// Tab switching functionality
+function switchTab(tabName: string): void {
+  // Hide all tab panes
+  const panes = document.querySelectorAll<HTMLDivElement>(".tab-pane");
+  panes.forEach((pane) => pane.classList.remove("active"));
+
+  // Remove active class from all buttons
+  const buttons = document.querySelectorAll<HTMLButtonElement>(".tab-button");
+  buttons.forEach((btn) => btn.classList.remove("active"));
+
+  // Show selected pane and mark button as active
+  const selectedPane = document.querySelector<HTMLDivElement>(`#tab-${tabName}`);
+  const selectedButton = document.querySelector<HTMLButtonElement>(`[data-tab="${tabName}"]`);
+
+  if (selectedPane) selectedPane.classList.add("active");
+  if (selectedButton) selectedButton.classList.add("active");
+}
+
+// Attach tab button listeners
+document.querySelectorAll<HTMLButtonElement>(".tab-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    const tabName = button.getAttribute("data-tab");
+    if (tabName) switchTab(tabName);
+  });
+});
+
 if (initialNotice) showNotice(initialNotice);
 void import("./viewer/scene").then(({ ChassisScene: Scene }) => {
   viewer = new Scene(

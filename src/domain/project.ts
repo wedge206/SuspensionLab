@@ -35,13 +35,14 @@ export const DEFAULT_WHEEL_DIAMETER_IN = 15;
 export const DEFAULT_TIRE_SECTION_WIDTH_MM = 195;
 export const DEFAULT_TIRE_ASPECT_RATIO = 65;
 export const DEFAULT_SPRING_RATE_N_PER_MM = 50;
+export const DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM = 750;
 
 export function validateProject(value: unknown): SuspensionProject {
   if (!value || typeof value !== "object") {
     throw new Error("Project file must contain a JSON object.");
   }
   const project = value as Record<string, unknown>;
-  if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].includes(project.schemaVersion as number)) {
+  if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].includes(project.schemaVersion as number)) {
     throw new Error(`Unsupported project schema version: ${String(project.schemaVersion)}.`);
   }
   if (typeof project.id !== "string" || typeof project.name !== "string" ||
@@ -192,6 +193,12 @@ export function validateProject(value: unknown): SuspensionProject {
   const springRateNPerMm: unknown = schemaVersion >= 22
     ? suspension.springRateNPerMm
     : DEFAULT_SPRING_RATE_N_PER_MM;
+  const rearSuspension = project.rearSuspension && typeof project.rearSuspension === "object"
+    ? project.rearSuspension as Record<string, unknown>
+    : {};
+  const mainArmInnerMountWidthMm: unknown = schemaVersion >= 23
+    ? rearSuspension.mainArmInnerMountWidthMm
+    : DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM;
   if (typeof widthMm !== "number" || !Number.isFinite(widthMm) || widthMm <= 0 ||
       typeof rearWidthMm !== "number" || !Number.isFinite(rearWidthMm) || rearWidthMm <= 0 ||
       typeof controlArmDepthMm !== "number" || !Number.isFinite(controlArmDepthMm) || controlArmDepthMm <= 0 ||
@@ -245,8 +252,12 @@ export function validateProject(value: unknown): SuspensionProject {
   if (typeof springRateNPerMm !== "number" || !Number.isFinite(springRateNPerMm) || springRateNPerMm <= 0) {
     throw new Error("Spring rate must be a positive finite value.");
   }
+  if (typeof mainArmInnerMountWidthMm !== "number" ||
+      !Number.isFinite(mainArmInnerMountWidthMm) || mainArmInnerMountWidthMm <= 0) {
+    throw new Error("Main arm inner mount width must be a positive finite value.");
+  }
   return {
-    schemaVersion: 22,
+    schemaVersion: 23,
     id: project.id,
     name: project.name,
     frontLowerControlArmPickup: { widthMm, rearWidthMm, controlArmDepthMm, frontHeightMm, rearHeightMm },
@@ -290,5 +301,6 @@ export function validateProject(value: unknown): SuspensionProject {
       tireAspectRatio,
     },
     suspension: { springRateNPerMm },
+    rearSuspension: { mainArmInnerMountWidthMm },
   };
 }

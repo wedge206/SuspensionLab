@@ -1,7 +1,7 @@
 export type Vec3 = [number, number, number];
 
 export interface SuspensionProject {
-  schemaVersion: 22;
+  schemaVersion: 23;
   id: string;
   name: string;
   frontLowerControlArmPickup: {
@@ -52,5 +52,8 @@ export interface SuspensionProject {
   };
   suspension: {
     springRateNPerMm: number;
+  };
+  rearSuspension: {
+    mainArmInnerMountWidthMm: number;
   };
 }

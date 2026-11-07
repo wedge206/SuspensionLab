@@ -35,6 +35,7 @@ import {
   DEFAULT_TIRE_SECTION_WIDTH_MM,
   DEFAULT_TIRE_ASPECT_RATIO,
   DEFAULT_SPRING_RATE_N_PER_MM,
+  DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM,
 } from "./domain/project";
 import { downloadProject, loadProjects, readProjectFile, saveProjects } from "./persistence/projects";
 import { steeringRackTravelLimitMm } from "./domain/coordinates";
@@ -249,7 +250,13 @@ app.innerHTML = `
       <p class="sidebar-footnote">Front and rear mount pairs are mirrored equally across the centerline; each mount station has its own height. Strut lengths run from the moving strut mounts to the fixed top mounts and are checked against the configured travel limits.</p>
           </div>
           <div class="tab-pane" id="tab-rear">
-            <p class="rear-placeholder">Rear suspension configuration coming soon...</p>
+            <section class="build-sequence">
+              <div class="geometry-heading"><h2>Rear suspension</h2><span>Control arm mounts</span></div>
+              <label class="dimension-field" for="rear-main-arm-inner-mount-width">
+                <span><strong>Main arm inner mount width</strong><small>Distance between left and right inner mounts</small></span>
+                <span class="dimension-input"><input id="rear-main-arm-inner-mount-width" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+            </section>
           </div>
         </div>
       </div>
@@ -343,13 +350,15 @@ const wheelDiameterInput = document.querySelector<HTMLInputElement>("#wheel-diam
 const tireSectionWidthInput = document.querySelector<HTMLInputElement>("#tire-section-width")!;
 const tireAspectRatioInput = document.querySelector<HTMLInputElement>("#tire-aspect-ratio")!;
 const springRateInput = document.querySelector<HTMLInputElement>("#spring-rate")!;
+const rearMainArmInnerMountWidthInput =
+  document.querySelector<HTMLInputElement>("#rear-main-arm-inner-mount-width")!;
 const scrubGeometryToggle = document.querySelector<HTMLInputElement>("#show-scrub-geometry")!;
 let scrubGeometryVisible = scrubGeometryToggle.checked;
 let viewer: ChassisScene | undefined;
 
 function createProject(name: string): SuspensionProject {
   return {
-    schemaVersion: 22,
+    schemaVersion: 23,
     id: crypto.randomUUID(),
     name,
     frontLowerControlArmPickup: {
@@ -399,6 +408,9 @@ function createProject(name: string): SuspensionProject {
       tireAspectRatio: DEFAULT_TIRE_ASPECT_RATIO,
     },
     suspension: { springRateNPerMm: DEFAULT_SPRING_RATE_N_PER_MM },
+    rearSuspension: {
+      mainArmInnerMountWidthMm: DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM,
+    },
   };
 }
 
@@ -475,6 +487,8 @@ function renderGeometry(): void {
   tireSectionWidthInput.value = String(current.wheelTire.tireSectionWidthMm);
   tireAspectRatioInput.value = String(current.wheelTire.tireAspectRatio);
   springRateInput.value = String(current.suspension.springRateNPerMm);
+  rearMainArmInnerMountWidthInput.value =
+    String(current.rearSuspension.mainArmInnerMountWidthMm);
   document.querySelector("#front-point-spacing")!.textContent =
     `${(current.frontLowerControlArmPickup.widthMm * 2).toFixed(0)} mm`;
   viewer?.update(current);
@@ -613,6 +627,9 @@ document.querySelector<HTMLButtonElement>("#reset-project")!.addEventListener("c
     tireAspectRatio: DEFAULT_TIRE_ASPECT_RATIO,
   };
   current.suspension = { springRateNPerMm: DEFAULT_SPRING_RATE_N_PER_MM };
+  current.rearSuspension = {
+    mainArmInnerMountWidthMm: DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM,
+  };
   renderGeometry();
   if (persistOrNotify()) showNotice("Project dimensions reset to their default values.");
 });
@@ -649,6 +666,19 @@ wheelDiameterInput.addEventListener("change", () => updateWheelTireDimension("wh
 tireSectionWidthInput.addEventListener("change", () => updateWheelTireDimension("tireSectionWidthMm", tireSectionWidthInput));
 tireAspectRatioInput.addEventListener("change", () => updateWheelTireDimension("tireAspectRatio", tireAspectRatioInput));
 springRateInput.addEventListener("change", () => updateSpringRate());
+rearMainArmInnerMountWidthInput.addEventListener("change", () => updateRearMainArmInnerMountWidth());
+
+function updateRearMainArmInnerMountWidth(): void {
+  const value = Number(rearMainArmInnerMountWidthInput.value);
+  if (!Number.isFinite(value) || value <= 0) {
+    showNotice("Main arm inner mount width must be a positive finite number.", "error");
+    renderGeometry();
+    return;
+  }
+  current.rearSuspension.mainArmInnerMountWidthMm = value;
+  renderGeometry();
+  persistOrNotify();
+}
 
 function updateSpringRate(): void {
   const value = Number(springRateInput.value);

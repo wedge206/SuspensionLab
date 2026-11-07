@@ -16,13 +16,13 @@ export function loadProjects(): ProjectLibrary {
   const projects = value.map(validateProject);
   const resetLegacyProjects = value.some((project) =>
     !project || typeof project !== "object" ||
-    !("schemaVersion" in project) || project.schemaVersion !== 22 ||
+    !("schemaVersion" in project) || project.schemaVersion !== 23 ||
     !("frontLowerControlArmPickup" in project) ||
     Object.keys(project).some((key) =>
       key !== "schemaVersion" && key !== "id" && key !== "name" &&
       key !== "frontLowerControlArmPickup" && key !== "frontControlArm" &&
       key !== "steeringRack" && key !== "frontTopMount" && key !== "wheelKnuckle" &&
-      key !== "wheelTire" && key !== "suspension"));
+      key !== "wheelTire" && key !== "suspension" && key !== "rearSuspension"));
   if (resetLegacyProjects) {
     saveProjects(projects);
   }

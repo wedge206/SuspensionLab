@@ -11,7 +11,7 @@ describe("chassis project format", () => {
       analysis: { bumpLimitMm: 120 },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.id).toBe("legacy-id");
     expect(project.name).toBe("Old suspension");
     expect(project.frontLowerControlArmPickup).toEqual({
@@ -57,6 +57,7 @@ describe("chassis project format", () => {
       tireAspectRatio: 65,
     });
     expect(project.suspension).toEqual({ springRateNPerMm: 50 });
+    expect(project.rearSuspension).toEqual({ mainArmInnerMountWidthMm: 750 });
   });
 
   it("accepts a project with explicit top mount dimensions", () => {
@@ -88,7 +89,7 @@ describe("chassis project format", () => {
         strutMountLocationMm: 95,
       },
     })).toEqual({
-      schemaVersion: 22,
+      schemaVersion: 23,
       id: "project-id",
       name: "Frame project",
       frontLowerControlArmPickup: {
@@ -134,6 +135,7 @@ describe("chassis project format", () => {
         tireAspectRatio: 65,
       },
       suspension: { springRateNPerMm: 50 },
+      rearSuspension: { mainArmInnerMountWidthMm: 750 },
     });
   });
 
@@ -206,7 +208,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.wheelKnuckle.steeringPivotOffsetMm).toBe(-24);
     expect(project.wheelKnuckle.strutMountOffsetMm).toBe(-10);
     expect(project.wheelKnuckle.strutMountLocationMm).toBe(-89);
@@ -279,7 +281,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.steeringRack.tieRodLengthMm).toBe(338);
     expect(project.steeringRack.housingWidthMm).toBe(500);
     expect(project.steeringRack.steeringLimiterMm).toBe(10);
@@ -320,7 +322,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.wheelKnuckle).toEqual({
       steeringPivotHeightMm: 125,
       steeringPivotDepthMm: 210,
@@ -374,7 +376,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.steeringRack).toEqual({
       widthMm: 850,
       centerlineHeightMm: 362,
@@ -425,7 +427,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.steeringRack).toEqual({
       widthMm: 850,
       centerlineHeightMm: 362,
@@ -478,7 +480,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.wheelKnuckle.hubHeightMm).toBe(60);
     expect(project.wheelKnuckle.hubSpacingMm).toBe(94);
   });
@@ -535,7 +537,7 @@ describe("chassis project format", () => {
       frontTopMount: { heightMm: 920, widthMm: 980, offsetMm: 25 },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.frontLowerControlArmPickup.widthMm).toBe(325);
     expect(project.frontControlArm).toEqual({
       lengthMm: 330,
@@ -581,7 +583,7 @@ describe("chassis project format", () => {
       frontTopMount: { heightMm: 920, widthMm: 980, offsetMm: 25 },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.frontLowerControlArmPickup.widthMm).toBe(325);
     expect(project.frontControlArm.leftRotationRad).toBe(0.1);
     expect(project.frontTopMount).toEqual({ heightMm: 920, widthMm: 980, offsetMm: 25 });
@@ -627,7 +629,7 @@ describe("chassis project format", () => {
       },
     });
 
-    expect(project.schemaVersion).toBe(22);
+    expect(project.schemaVersion).toBe(23);
     expect(project.wheelKnuckle).toEqual({
       steeringPivotHeightMm: 140,
       steeringPivotDepthMm: 215,
@@ -736,14 +738,27 @@ describe("chassis project format", () => {
         tireAspectRatio: 65,
       },
       suspension: { springRateNPerMm: 50 },
+      rearSuspension: { mainArmInnerMountWidthMm: 750 },
     };
     const project = (frontTopMount: unknown) => ({
-      schemaVersion: 22,
+      schemaVersion: 23,
       id: "id",
       name: "Frame",
       ...validDimensions,
       frontTopMount,
     });
+
+    const customizedRearSuspension = validateProject({
+      ...project({ heightMm: 900, widthMm: 950, offsetMm: 10 }),
+      rearSuspension: { mainArmInnerMountWidthMm: 825 },
+    });
+    expect(customizedRearSuspension.rearSuspension).toEqual({
+      mainArmInnerMountWidthMm: 825,
+    });
+    expect(() => validateProject({
+      ...project({ heightMm: 900, widthMm: 950, offsetMm: 10 }),
+      rearSuspension: { mainArmInnerMountWidthMm: 0 },
+    })).toThrow("Main arm inner mount width must be a positive finite value");
 
     expect(() => validateProject(project({ heightMm: 0, widthMm: 950, offsetMm: 10 })))
       .toThrow("positive finite");
@@ -769,7 +784,7 @@ describe("chassis project format", () => {
       steeringRack: { ...validDimensions.steeringRack, rackTravelMm: 166 },
     })).toThrow("positive finite");
     const projectWithWheelKnuckle = (wheelKnuckle: Record<string, unknown>) => ({
-      schemaVersion: 22,
+      schemaVersion: 23,
       id: "id",
       name: "Frame",
       ...validDimensions,
@@ -790,7 +805,7 @@ describe("chassis project format", () => {
       strutMountLocationMm: 89,
     }))).toThrow("non-negative finite");
     expect(() => validateProject({
-      schemaVersion: 22,
+      schemaVersion: 23,
       id: "id",
       name: "Frame",
       ...validDimensions,

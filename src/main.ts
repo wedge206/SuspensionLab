@@ -245,6 +245,18 @@ app.innerHTML = `
           <div class="tab-pane" id="tab-rear">
             <section class="build-sequence">
               <div class="geometry-heading"><h2>Rear Subframe</h2><span>Control arm mounts</span></div>
+              <label class="dimension-field" for="rear-camber-arm-inner-mount-height">
+                <span><strong>Camber Arm Inner Mount Height</strong><small>Height above the ground plane</small></span>
+                <span class="dimension-input"><input id="rear-camber-arm-inner-mount-height" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-camber-arm-inner-mount-forward-offset">
+                <span><strong>Camber Arm Inner Mount Forward Offset</strong><small>Forward from the rear main arm inner mount</small></span>
+                <span class="dimension-input"><input id="rear-camber-arm-inner-mount-forward-offset" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-camber-arm-inner-mount-width">
+                <span><strong>Camber Arm Inner Mount Width</strong><small>Distance between left and right inner mounts</small></span>
+                <span class="dimension-input"><input id="rear-camber-arm-inner-mount-width" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
               <label class="dimension-field" for="rear-main-arm-inner-mount-width">
                 <span><strong>Main arm inner mount width</strong><small>Distance between left and right inner mounts</small></span>
                 <span class="dimension-input"><input id="rear-main-arm-inner-mount-width" type="number" min="1" step="1" /> <small>mm</small></span>
@@ -431,6 +443,12 @@ const tireAspectRatioInput = document.querySelector<HTMLInputElement>("#tire-asp
 const springRateInput = document.querySelector<HTMLInputElement>("#spring-rate")!;
 const rearMainArmInnerMountWidthInput =
   document.querySelector<HTMLInputElement>("#rear-main-arm-inner-mount-width")!;
+const rearCamberArmInnerMountHeightInput =
+  document.querySelector<HTMLInputElement>("#rear-camber-arm-inner-mount-height")!;
+const rearCamberArmInnerMountForwardOffsetInput =
+  document.querySelector<HTMLInputElement>("#rear-camber-arm-inner-mount-forward-offset")!;
+const rearCamberArmInnerMountWidthInput =
+  document.querySelector<HTMLInputElement>("#rear-camber-arm-inner-mount-width")!;
 const rearMainArmInnerMountHeightInput =
   document.querySelector<HTMLInputElement>("#rear-main-arm-inner-mount-height")!;
 const rearFrontToRearLengthInput =
@@ -543,6 +561,12 @@ function renderGeometry(): void {
   tireSectionWidthInput.value = String(current.wheelTire.tireSectionWidthMm);
   tireAspectRatioInput.value = String(current.wheelTire.tireAspectRatio);
   springRateInput.value = String(current.suspension.springRateNPerMm);
+  rearCamberArmInnerMountHeightInput.value =
+    String(current.rearSuspension.camberArmInnerMountHeightMm);
+  rearCamberArmInnerMountForwardOffsetInput.value =
+    String(current.rearSuspension.camberArmInnerMountForwardOffsetMm);
+  rearCamberArmInnerMountWidthInput.value =
+    String(current.rearSuspension.camberArmInnerMountWidthMm);
   rearMainArmInnerMountWidthInput.value =
     String(current.rearSuspension.mainArmInnerMountWidthMm);
   rearMainArmInnerMountHeightInput.value =
@@ -720,6 +744,24 @@ wheelDiameterInput.addEventListener("change", () => updateWheelTireDimension("wh
 tireSectionWidthInput.addEventListener("change", () => updateWheelTireDimension("tireSectionWidthMm", tireSectionWidthInput));
 tireAspectRatioInput.addEventListener("change", () => updateWheelTireDimension("tireAspectRatio", tireAspectRatioInput));
 springRateInput.addEventListener("change", () => updateSpringRate());
+rearCamberArmInnerMountHeightInput.addEventListener("change", () =>
+  updateRearSuspensionDimension(
+    "camberArmInnerMountHeightMm",
+    rearCamberArmInnerMountHeightInput,
+    "Camber arm inner mount height",
+  ));
+rearCamberArmInnerMountForwardOffsetInput.addEventListener("change", () =>
+  updateRearSuspensionDimension(
+    "camberArmInnerMountForwardOffsetMm",
+    rearCamberArmInnerMountForwardOffsetInput,
+    "Camber arm inner mount forward offset",
+  ));
+rearCamberArmInnerMountWidthInput.addEventListener("change", () =>
+  updateRearSuspensionDimension(
+    "camberArmInnerMountWidthMm",
+    rearCamberArmInnerMountWidthInput,
+    "Camber arm inner mount width",
+  ));
 rearMainArmInnerMountWidthInput.addEventListener("change", () =>
   updateRearSuspensionDimension("mainArmInnerMountWidthMm", rearMainArmInnerMountWidthInput, "Main arm inner mount width"));
 rearMainArmInnerMountHeightInput.addEventListener("change", () =>

@@ -5,6 +5,7 @@ import {
   type HubOrientation,
   hubFacePoints,
   orientHubPoint,
+  rearCamberArmInnerMountPoints,
   rearMainArmInnerMountPoints,
   rearMainArmOuterMountPoints,
   rearTrailingArmMountPoints,
@@ -48,6 +49,18 @@ describe("front lower control arm pickup points", () => {
         expect(front[side][0] - rear[side][0]).toBe(1600);
       }
       expect(rear[0][1] - rear[1][1]).toBe(750);
+    });
+
+    it("places camber arm inner mounts forward and upward relative to the main arm mounts", () => {
+      const rear = rearMainArmInnerMountPoints(1600, 750, 250);
+      const camber = rearCamberArmInnerMountPoints(rear, 97, 250, 660);
+
+      expect(camber).toEqual([[-700, 330, 347], [-700, -330, 347]]);
+      for (let side = 0; side < 2; side += 1) {
+        expect(camber[side][0] - rear[side][0]).toBe(250);
+        expect(camber[side][2] - rear[side][2]).toBe(97);
+      }
+      expect(camber[0][1] - camber[1][1]).toBe(660);
     });
 
     describe("rear toe arm inner mount points", () => {
@@ -683,6 +696,9 @@ describe("front lower control arm pickup points", () => {
       },
       suspension: { springRateNPerMm: 50 },
       rearSuspension: {
+        camberArmInnerMountHeightMm: 97,
+        camberArmInnerMountForwardOffsetMm: 250,
+        camberArmInnerMountWidthMm: 660,
         mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
         toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
         mainArmLengthMm: 420, toeArmLengthMm: 225, leftRotationRad: 0, rightRotationRad: 0,

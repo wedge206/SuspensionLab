@@ -62,9 +62,12 @@ describe("built-in project templates", () => {
       },
       suspension: { springRateNPerMm: 50 },
       rearSuspension: {
-        mainArmInnerMountWidthMm: 725, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
-        toeArmInnerMountWidthMm: 1100, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
-        mainArmLengthMm: 420, toeArmLengthMm: 225, leftRotationRad: 0, rightRotationRad: 0,
+        camberArmInnerMountHeightMm: 97,
+        camberArmInnerMountForwardOffsetMm: 250,
+        camberArmInnerMountWidthMm: 660,
+        mainArmInnerMountWidthMm: 400, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
+        toeArmInnerMountWidthMm: 685, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
+        mainArmLengthMm: 370, toeArmLengthMm: 210, leftRotationRad: 0, rightRotationRad: 0,
         leftVerticalOffsetMm: 0, rightVerticalOffsetMm: 0,
       },
       rearHub: {
@@ -74,10 +77,10 @@ describe("built-in project templates", () => {
         toeArmOuterMountHeightOffsetMm: 0,
         toeArmOuterMountForwardOffsetMm: 200,
         toeArmOuterMountLateralOffsetMm: 10,
-        trailingArmLengthMm: 355,
+        trailingArmLengthMm: 470,
         trailingArmMountHeightMm: 308,
-        trailingArmMountWidthMm: 1100,
-        trailingArmMountForwardOffsetMm: 290,
+        trailingArmMountWidthMm: 1040,
+        trailingArmMountForwardOffsetMm: 460,
       },
     });
   });
@@ -98,8 +101,8 @@ describe("built-in project templates", () => {
       frontLowerControlArmPickup: { widthMm: 465 },
       rearSuspension: {
         mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
-        toeArmInnerMountWidthMm: 1100, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
-        mainArmLengthMm: 420, toeArmLengthMm: 225,
+        toeArmInnerMountWidthMm: 685, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
+        mainArmLengthMm: 370, toeArmLengthMm: 210,
       },
     });
   });

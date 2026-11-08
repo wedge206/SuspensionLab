@@ -79,6 +79,18 @@ export function validateProject(value: unknown): SuspensionProject {
   const rearSuspension = project.rearSuspension && typeof project.rearSuspension === "object"
     ? project.rearSuspension as Record<string, unknown>
     : {};
+  const camberArmInnerMountHeightMm: unknown =
+    rearSuspension.camberArmInnerMountHeightMm === undefined
+      ? 97
+      : rearSuspension.camberArmInnerMountHeightMm;
+  const camberArmInnerMountForwardOffsetMm: unknown =
+    rearSuspension.camberArmInnerMountForwardOffsetMm === undefined
+      ? 250
+      : rearSuspension.camberArmInnerMountForwardOffsetMm;
+  const camberArmInnerMountWidthMm: unknown =
+    rearSuspension.camberArmInnerMountWidthMm === undefined
+      ? 660
+      : rearSuspension.camberArmInnerMountWidthMm;
   const mainArmInnerMountWidthMm: unknown = rearSuspension.mainArmInnerMountWidthMm;
   const mainArmInnerMountHeightMm: unknown = rearSuspension.mainArmInnerMountHeightMm === undefined
     ? 250
@@ -197,6 +209,18 @@ export function validateProject(value: unknown): SuspensionProject {
   }
   if (typeof springRateNPerMm !== "number" || !Number.isFinite(springRateNPerMm) || springRateNPerMm <= 0) {
     throw new Error("Spring rate must be a positive finite value.");
+  }
+  if (typeof camberArmInnerMountHeightMm !== "number" ||
+      !Number.isFinite(camberArmInnerMountHeightMm) || camberArmInnerMountHeightMm <= 0) {
+    throw new Error("Camber arm inner mount height must be a positive finite value.");
+  }
+  if (typeof camberArmInnerMountForwardOffsetMm !== "number" ||
+      !Number.isFinite(camberArmInnerMountForwardOffsetMm) || camberArmInnerMountForwardOffsetMm <= 0) {
+    throw new Error("Camber arm inner mount forward offset must be a positive finite value.");
+  }
+  if (typeof camberArmInnerMountWidthMm !== "number" ||
+      !Number.isFinite(camberArmInnerMountWidthMm) || camberArmInnerMountWidthMm <= 0) {
+    throw new Error("Camber arm inner mount width must be a positive finite value.");
   }
   if (typeof mainArmInnerMountWidthMm !== "number" ||
       !Number.isFinite(mainArmInnerMountWidthMm) || mainArmInnerMountWidthMm <= 0) {
@@ -333,6 +357,9 @@ export function validateProject(value: unknown): SuspensionProject {
     },
     suspension: { springRateNPerMm },
     rearSuspension: {
+      camberArmInnerMountHeightMm,
+      camberArmInnerMountForwardOffsetMm,
+      camberArmInnerMountWidthMm,
       mainArmInnerMountWidthMm,
       mainArmInnerMountHeightMm,
       frontToRearLengthMm,

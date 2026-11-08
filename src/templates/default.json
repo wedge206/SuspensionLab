@@ -52,6 +52,9 @@
     "springRateNPerMm": 50
   },
   "rearSuspension": {
+    "camberArmInnerMountHeightMm": 97,
+    "camberArmInnerMountForwardOffsetMm": 189,
+    "camberArmInnerMountWidthMm": 660,
     "mainArmInnerMountWidthMm": 400,
     "mainArmInnerMountHeightMm": 250,
     "frontToRearLengthMm": 1900,
@@ -72,9 +75,9 @@
     "toeArmOuterMountHeightOffsetMm": 0,
     "toeArmOuterMountForwardOffsetMm": 200,
     "toeArmOuterMountLateralOffsetMm": 10,
-    "trailingArmLengthMm": 455,
+    "trailingArmLengthMm": 470,
     "trailingArmMountHeightMm": 308,
-    "trailingArmMountWidthMm": 1160,
+    "trailingArmMountWidthMm": 1040,
     "trailingArmMountForwardOffsetMm": 460
   }
 }

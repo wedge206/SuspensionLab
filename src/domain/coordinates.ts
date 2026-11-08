@@ -58,6 +58,19 @@ export function rearMainArmInnerMountPoints(
   return [[x, halfWidth, heightMm], [x, -halfWidth, heightMm]];
 }
 
+export function rearCamberArmInnerMountPoints(
+  mainArmMounts: [Vec3, Vec3],
+  heightOffsetMm: number,
+  forwardOffsetMm: number,
+  widthMm: number,
+): [Vec3, Vec3] {
+  const halfWidth = widthMm / 2;
+  return [
+    [mainArmMounts[0][0] + forwardOffsetMm, halfWidth, mainArmMounts[0][2] + heightOffsetMm],
+    [mainArmMounts[1][0] + forwardOffsetMm, -halfWidth, mainArmMounts[1][2] + heightOffsetMm],
+  ];
+}
+
 export function rearToeArmInnerMountPoints(
   mainArmMounts: [Vec3, Vec3],
   widthMm: number,

@@ -5,6 +5,7 @@ import {
   controlArmPickupPoints,
   frontTopMountPoints,
   orientHubPoint,
+  rearCamberArmInnerMountPoints,
   rearMainArmInnerMountPoints,
   rearMainArmOuterMountPoints,
   rearTrailingArmMountPoints,
@@ -77,6 +78,10 @@ export class ChassisScene {
   private readonly rearMainArmInnerMounts = [
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
+  ];
+  private readonly rearCamberArmInnerMounts = [
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xc98ce8, roughness: 0.4 })),
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xc98ce8, roughness: 0.4 })),
   ];
   private readonly rearMainArmOuterMounts = [
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
@@ -324,6 +329,7 @@ export class ChassisScene {
       this.strutMountAngleMarkers,
       ...this.pickups,
       ...this.rearMainArmInnerMounts,
+      ...this.rearCamberArmInnerMounts,
       ...this.rearMainArmOuterMounts,
       ...this.rearToeArmInnerMounts,
       ...this.rearToeArmOuterMounts,
@@ -392,6 +398,13 @@ export class ChassisScene {
       project.rearSuspension.mainArmInnerMountHeightMm,
     );
     this.rearMainArmInnerMounts.forEach((mount, index) => mount.position.set(...rearMounts[index]));
+    const camberArmMounts = rearCamberArmInnerMountPoints(
+      rearMounts,
+      project.rearSuspension.camberArmInnerMountHeightMm,
+      project.rearSuspension.camberArmInnerMountForwardOffsetMm,
+      project.rearSuspension.camberArmInnerMountWidthMm,
+    );
+    this.rearCamberArmInnerMounts.forEach((mount, index) => mount.position.set(...camberArmMounts[index]));
     const trailingArmMounts = rearTrailingArmMountPoints(
       rearMounts,
       project.rearHub.trailingArmMountWidthMm,
@@ -799,6 +812,7 @@ export class ChassisScene {
     for (const pickup of [
       ...this.pickups,
       ...this.rearMainArmInnerMounts,
+      ...this.rearCamberArmInnerMounts,
       ...this.rearMainArmOuterMounts,
       ...this.rearToeArmInnerMounts,
       ...this.rearToeArmOuterMounts,

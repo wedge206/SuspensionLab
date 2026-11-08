@@ -54,6 +54,9 @@ export interface SuspensionProject {
     springRateNPerMm: number;
   };
   rearSuspension: {
+    camberArmInnerMountHeightMm: number;
+    camberArmInnerMountForwardOffsetMm: number;
+    camberArmInnerMountWidthMm: number;
     mainArmInnerMountWidthMm: number;
     mainArmInnerMountHeightMm: number;
     frontToRearLengthMm: number;

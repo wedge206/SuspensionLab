@@ -35,6 +35,9 @@ describe("rear suspension main arm inner mount height", () => {
       ...legacy,
       rearSuspension: { mainArmInnerMountWidthMm },
     }).rearSuspension).toEqual({
+      camberArmInnerMountHeightMm: 97,
+      camberArmInnerMountForwardOffsetMm: 250,
+      camberArmInnerMountWidthMm: 660,
       mainArmInnerMountWidthMm,
       mainArmInnerMountHeightMm: 250,
       frontToRearLengthMm: 1600,
@@ -63,6 +66,33 @@ describe("rear suspension main arm inner mount height", () => {
       ...value,
       rearSuspension: { ...value.rearSuspension, mainArmInnerMountHeightMm: height },
     })).toThrow("Main arm inner mount height must be a positive finite value.");
+  });
+
+  it("preserves valid camber arm inner mount dimensions", () => {
+    const value = project();
+    value.rearSuspension.camberArmInnerMountHeightMm = 105;
+    value.rearSuspension.camberArmInnerMountForwardOffsetMm = 275;
+    value.rearSuspension.camberArmInnerMountWidthMm = 680;
+
+    expect(validateProject(value).rearSuspension).toMatchObject({
+      camberArmInnerMountHeightMm: 105,
+      camberArmInnerMountForwardOffsetMm: 275,
+      camberArmInnerMountWidthMm: 680,
+    });
+  });
+
+  it.each([
+    ["camberArmInnerMountHeightMm", "Camber arm inner mount height"],
+    ["camberArmInnerMountForwardOffsetMm", "Camber arm inner mount forward offset"],
+    ["camberArmInnerMountWidthMm", "Camber arm inner mount width"],
+  ] as const)("rejects an invalid %s", (key, label) => {
+    const value = project();
+    for (const dimension of [0, -1, NaN, Infinity, null, "250"]) {
+      expect(() => validateProject({
+        ...value,
+        rearSuspension: { ...value.rearSuspension, [key]: dimension },
+      })).toThrow(`${label} must be a positive finite value.`);
+    }
   });
 });
 

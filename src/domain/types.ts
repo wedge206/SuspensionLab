@@ -1,7 +1,6 @@
 export type Vec3 = [number, number, number];
 
 export interface SuspensionProject {
-  schemaVersion: 23;
   id: string;
   name: string;
   frontLowerControlArmPickup: {

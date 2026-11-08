@@ -52,9 +52,6 @@ let initialNotice = "";
 try {
   const loaded = loadProjects();
   projects = loaded.projects;
-  if (loaded.resetLegacyProjects) {
-    initialNotice = "Older projects were upgraded to the current chassis-point format.";
-  }
   if (!projects.length) {
     current = createProject("New suspension project");
     projects = [current];
@@ -358,7 +355,6 @@ let viewer: ChassisScene | undefined;
 
 function createProject(name: string): SuspensionProject {
   return {
-    schemaVersion: 23,
     id: crypto.randomUUID(),
     name,
     frontLowerControlArmPickup: {

@@ -19,7 +19,7 @@ import {
   trueHubFaceGeometry,
   wheelAlignmentMeasurements,
 } from "./coordinates";
-import { validateProject } from "./project";
+import type { SuspensionProject } from "./types";
 
 describe("front lower control arm pickup points", () => {
   it("mirrors each pair by its own width and uses independently specified heights", () => {
@@ -442,11 +442,54 @@ describe("front lower control arm pickup points", () => {
   });
 
   it("calculates the local motion ratio from suspension geometry", () => {
-    const project = validateProject({
-      schemaVersion: 2,
+    const project: SuspensionProject = {
       id: "motion-ratio-test",
       name: "Motion ratio test",
-    });
+      frontLowerControlArmPickup: {
+        widthMm: 465,
+        rearWidthMm: 465,
+        controlArmDepthMm: 302,
+        frontHeightMm: 250,
+        rearHeightMm: 250,
+      },
+      frontControlArm: {
+        lengthMm: 320,
+        ballJointOffsetMm: 12,
+        leftRotationRad: 0,
+        rightRotationRad: 0,
+      },
+      steeringRack: {
+        widthMm: 850,
+        centerlineHeightMm: 362,
+        centerlineOffsetMm: 166,
+        housingWidthMm: 500,
+        steeringLimiterMm: 10,
+        rackTravelMm: 0,
+        tieRodLengthMm: 338,
+      },
+      frontTopMount: { heightMm: 900, widthMm: 960, offsetMm: 30 },
+      wheelKnuckle: {
+        steeringPivotHeightMm: 125,
+        steeringPivotDepthMm: 210,
+        steeringPivotOffsetMm: -24,
+        strutMountHeightMm: 130,
+        strutMountOffsetMm: -10,
+        strutMountLocationMm: -89,
+        strutMountAngleDeg: 20,
+        strutMaxLengthMm: 650,
+        strutMinLengthMm: 450,
+        hubHeightMm: 60,
+        hubSpacingMm: 94,
+      },
+      wheelTire: {
+        wheelOffsetMm: -42,
+        wheelDiameterIn: 15,
+        tireSectionWidthMm: 195,
+        tireAspectRatio: 65,
+      },
+      suspension: { springRateNPerMm: 50 },
+      rearSuspension: { mainArmInnerMountWidthMm: 750 },
+    };
 
     const ratios = suspensionMotionRatios(project);
     expect(ratios[0]).toEqual(expect.any(Number));

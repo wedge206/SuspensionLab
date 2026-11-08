@@ -42,163 +42,74 @@ export function validateProject(value: unknown): SuspensionProject {
     throw new Error("Project file must contain a JSON object.");
   }
   const project = value as Record<string, unknown>;
-  if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].includes(project.schemaVersion as number)) {
-    throw new Error(`Unsupported project schema version: ${String(project.schemaVersion)}.`);
-  }
   if (typeof project.id !== "string" || typeof project.name !== "string" ||
       !project.id.trim() || !project.name.trim()) {
     throw new Error("Project needs a non-empty id and name.");
   }
-  const schemaVersion = project.schemaVersion as number;
-  const isLegacy = schemaVersion < 4;
   const pickup = project.frontLowerControlArmPickup;
-  if (!isLegacy && (!pickup || typeof pickup !== "object")) {
+  if (!pickup || typeof pickup !== "object") {
     throw new Error("Project is missing front lower control arm pickup dimensions.");
   }
   const pickupDimensions = pickup && typeof pickup === "object"
     ? pickup as Record<string, unknown>
     : {};
-  const widthMm: unknown = isLegacy ? DEFAULT_PICKUP_WIDTH_MM : pickupDimensions.widthMm;
-  const rearWidthMm: unknown = schemaVersion >= 5
-    ? pickupDimensions.rearWidthMm
-    : DEFAULT_REAR_PICKUP_WIDTH_MM;
-  const controlArmDepthMm: unknown = schemaVersion >= 6
-    ? pickupDimensions.controlArmDepthMm
-    : DEFAULT_CONTROL_ARM_DEPTH_MM;
-  const frontHeightMm: unknown = isLegacy
-    ? DEFAULT_FRONT_PICKUP_HEIGHT_MM
-    : schemaVersion >= 7
-      ? pickupDimensions.frontHeightMm
-      : pickupDimensions.heightMm;
-  const rearHeightMm: unknown = isLegacy
-    ? DEFAULT_REAR_PICKUP_HEIGHT_MM
-    : schemaVersion >= 7
-      ? pickupDimensions.rearHeightMm
-      : pickupDimensions.heightMm;
+  const widthMm: unknown = pickupDimensions.widthMm;
+  const rearWidthMm: unknown = pickupDimensions.rearWidthMm;
+  const controlArmDepthMm: unknown = pickupDimensions.controlArmDepthMm;
+  const frontHeightMm: unknown = pickupDimensions.frontHeightMm;
+  const rearHeightMm: unknown = pickupDimensions.rearHeightMm;
   const controlArm = project.frontControlArm && typeof project.frontControlArm === "object"
     ? project.frontControlArm as Record<string, unknown>
     : {};
-  const controlArmLengthMm: unknown = schemaVersion >= 8
-    ? controlArm.lengthMm
-    : DEFAULT_CONTROL_ARM_LENGTH_MM;
-  const ballJointOffsetMm: unknown = schemaVersion >= 8
-    ? controlArm.ballJointOffsetMm
-    : DEFAULT_BALL_JOINT_OFFSET_MM;
-  const leftRotationRad: unknown = schemaVersion >= 11
-    ? controlArm.leftRotationRad
-    : DEFAULT_CONTROL_ARM_ROTATION_RAD;
-  const rightRotationRad: unknown = schemaVersion >= 11
-    ? controlArm.rightRotationRad
-    : DEFAULT_CONTROL_ARM_ROTATION_RAD;
+  const controlArmLengthMm: unknown = controlArm.lengthMm;
+  const ballJointOffsetMm: unknown = controlArm.ballJointOffsetMm;
+  const leftRotationRad: unknown = controlArm.leftRotationRad;
+  const rightRotationRad: unknown = controlArm.rightRotationRad;
   const steeringRack = project.steeringRack && typeof project.steeringRack === "object"
     ? project.steeringRack as Record<string, unknown>
     : {};
-  const steeringRackWidthMm: unknown = schemaVersion >= 9
-    ? steeringRack.widthMm
-    : DEFAULT_STEERING_RACK_WIDTH_MM;
-  const steeringRackHeightMm: unknown = schemaVersion >= 9
-    ? steeringRack.centerlineHeightMm
-    : DEFAULT_STEERING_RACK_HEIGHT_MM;
-  const steeringRackOffsetMm: unknown = schemaVersion >= 9
-    ? steeringRack.centerlineOffsetMm
-    : DEFAULT_STEERING_RACK_OFFSET_MM;
-  const steeringHousingWidthMm: unknown = schemaVersion >= 18
-    ? steeringRack.housingWidthMm
-    : DEFAULT_STEERING_HOUSING_WIDTH_MM;
-  const steeringLimiterMm: unknown = schemaVersion >= 19
-    ? steeringRack.steeringLimiterMm
-    : DEFAULT_STEERING_LIMITER_MM;
-  const rackTravelMm: unknown = schemaVersion >= 19
-    ? steeringRack.rackTravelMm
-    : DEFAULT_STEERING_RACK_TRAVEL_MM;
-  const tieRodLengthMm: unknown = schemaVersion >= 16
-    ? steeringRack.tieRodLengthMm
-    : DEFAULT_TIE_ROD_LENGTH_MM;
+  const steeringRackWidthMm: unknown = steeringRack.widthMm;
+  const steeringRackHeightMm: unknown = steeringRack.centerlineHeightMm;
+  const steeringRackOffsetMm: unknown = steeringRack.centerlineOffsetMm;
+  const steeringHousingWidthMm: unknown = steeringRack.housingWidthMm;
+  const steeringLimiterMm: unknown = steeringRack.steeringLimiterMm;
+  const rackTravelMm: unknown = steeringRack.rackTravelMm;
+  const tieRodLengthMm: unknown = steeringRack.tieRodLengthMm;
   const topMount = project.frontTopMount && typeof project.frontTopMount === "object"
     ? project.frontTopMount as Record<string, unknown>
     : {};
-  const topMountHeightMm: unknown = schemaVersion >= 10
-    ? topMount.heightMm
-    : DEFAULT_TOP_MOUNT_HEIGHT_MM;
-  const topMountWidthMm: unknown = schemaVersion >= 10
-    ? topMount.widthMm
-    : DEFAULT_TOP_MOUNT_WIDTH_MM;
-  const topMountOffsetMm: unknown = schemaVersion >= 10
-    ? topMount.offsetMm
-    : DEFAULT_TOP_MOUNT_OFFSET_MM;
+  const topMountHeightMm: unknown = topMount.heightMm;
+  const topMountWidthMm: unknown = topMount.widthMm;
+  const topMountOffsetMm: unknown = topMount.offsetMm;
   const wheelKnuckle = project.wheelKnuckle && typeof project.wheelKnuckle === "object"
     ? project.wheelKnuckle as Record<string, unknown>
     : {};
-  const steeringPivotHeightMm: unknown = schemaVersion >= 12
-    ? wheelKnuckle.steeringPivotHeightMm
-    : DEFAULT_STEERING_PIVOT_HEIGHT_MM;
-  const steeringPivotDepthMm: unknown = schemaVersion >= 12
-    ? wheelKnuckle.steeringPivotDepthMm
-    : DEFAULT_STEERING_PIVOT_DEPTH_MM;
-  const savedSteeringPivotOffsetMm: unknown = schemaVersion >= 12
-    ? wheelKnuckle.steeringPivotOffsetMm
-    : DEFAULT_STEERING_PIVOT_OFFSET_MM;
-  const steeringPivotOffsetMm: unknown =
-    schemaVersion >= 12 && schemaVersion < 15 && savedSteeringPivotOffsetMm === 24
-      ? DEFAULT_STEERING_PIVOT_OFFSET_MM
-      : savedSteeringPivotOffsetMm;
-  const strutMountHeightMm: unknown = schemaVersion >= 13
-    ? wheelKnuckle.strutMountHeightMm
-    : DEFAULT_STRUT_MOUNT_HEIGHT_MM;
-  const savedStrutMountOffsetMm: unknown = schemaVersion >= 13
-    ? wheelKnuckle.strutMountOffsetMm
-    : DEFAULT_STRUT_MOUNT_OFFSET_MM;
-  const savedStrutMountLocationMm: unknown = schemaVersion >= 13
-    ? wheelKnuckle.strutMountLocationMm
-    : DEFAULT_STRUT_MOUNT_LOCATION_MM;
-  const strutMountOffsetMm: unknown = schemaVersion === 13 && savedStrutMountOffsetMm === 10
-    ? DEFAULT_STRUT_MOUNT_OFFSET_MM
-    : savedStrutMountOffsetMm;
-  const strutMountLocationMm: unknown = schemaVersion === 13 && savedStrutMountLocationMm === 89
-    ? DEFAULT_STRUT_MOUNT_LOCATION_MM
-    : savedStrutMountLocationMm;
-  const strutMountAngleDeg: unknown = schemaVersion >= 17
-    ? wheelKnuckle.strutMountAngleDeg
-    : DEFAULT_STRUT_MOUNT_ANGLE_DEG;
-  const strutMaxLengthMm: unknown = schemaVersion >= 17
-    ? wheelKnuckle.strutMaxLengthMm
-    : DEFAULT_STRUT_MAX_LENGTH_MM;
-  const strutMinLengthMm: unknown = schemaVersion >= 17
-    ? wheelKnuckle.strutMinLengthMm
-    : DEFAULT_STRUT_MIN_LENGTH_MM;
-  const hubHeightMm: unknown = schemaVersion >= 20
-    ? wheelKnuckle.hubHeightMm
-    : DEFAULT_HUB_HEIGHT_MM;
-  const hubSpacingMm: unknown = schemaVersion >= 20
-    ? wheelKnuckle.hubSpacingMm
-    : DEFAULT_HUB_SPACING_MM;
+  const steeringPivotHeightMm: unknown = wheelKnuckle.steeringPivotHeightMm;
+  const steeringPivotDepthMm: unknown = wheelKnuckle.steeringPivotDepthMm;
+  const steeringPivotOffsetMm: unknown = wheelKnuckle.steeringPivotOffsetMm;
+  const strutMountHeightMm: unknown = wheelKnuckle.strutMountHeightMm;
+  const strutMountOffsetMm: unknown = wheelKnuckle.strutMountOffsetMm;
+  const strutMountLocationMm: unknown = wheelKnuckle.strutMountLocationMm;
+  const strutMountAngleDeg: unknown = wheelKnuckle.strutMountAngleDeg;
+  const strutMaxLengthMm: unknown = wheelKnuckle.strutMaxLengthMm;
+  const strutMinLengthMm: unknown = wheelKnuckle.strutMinLengthMm;
+  const hubHeightMm: unknown = wheelKnuckle.hubHeightMm;
+  const hubSpacingMm: unknown = wheelKnuckle.hubSpacingMm;
   const wheelTire = project.wheelTire && typeof project.wheelTire === "object"
     ? project.wheelTire as Record<string, unknown>
     : {};
-  const wheelOffsetMm: unknown = schemaVersion >= 21
-    ? wheelTire.wheelOffsetMm
-    : DEFAULT_WHEEL_OFFSET_MM;
-  const wheelDiameterIn: unknown = schemaVersion >= 21
-    ? wheelTire.wheelDiameterIn
-    : DEFAULT_WHEEL_DIAMETER_IN;
-  const tireSectionWidthMm: unknown = schemaVersion >= 21
-    ? wheelTire.tireSectionWidthMm
-    : DEFAULT_TIRE_SECTION_WIDTH_MM;
-  const tireAspectRatio: unknown = schemaVersion >= 21
-    ? wheelTire.tireAspectRatio
-    : DEFAULT_TIRE_ASPECT_RATIO;
+  const wheelOffsetMm: unknown = wheelTire.wheelOffsetMm;
+  const wheelDiameterIn: unknown = wheelTire.wheelDiameterIn;
+  const tireSectionWidthMm: unknown = wheelTire.tireSectionWidthMm;
+  const tireAspectRatio: unknown = wheelTire.tireAspectRatio;
   const suspension = project.suspension && typeof project.suspension === "object"
     ? project.suspension as Record<string, unknown>
     : {};
-  const springRateNPerMm: unknown = schemaVersion >= 22
-    ? suspension.springRateNPerMm
-    : DEFAULT_SPRING_RATE_N_PER_MM;
+  const springRateNPerMm: unknown = suspension.springRateNPerMm;
   const rearSuspension = project.rearSuspension && typeof project.rearSuspension === "object"
     ? project.rearSuspension as Record<string, unknown>
     : {};
-  const mainArmInnerMountWidthMm: unknown = schemaVersion >= 23
-    ? rearSuspension.mainArmInnerMountWidthMm
-    : DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM;
+  const mainArmInnerMountWidthMm: unknown = rearSuspension.mainArmInnerMountWidthMm;
   if (typeof widthMm !== "number" || !Number.isFinite(widthMm) || widthMm <= 0 ||
       typeof rearWidthMm !== "number" || !Number.isFinite(rearWidthMm) || rearWidthMm <= 0 ||
       typeof controlArmDepthMm !== "number" || !Number.isFinite(controlArmDepthMm) || controlArmDepthMm <= 0 ||
@@ -257,7 +168,6 @@ export function validateProject(value: unknown): SuspensionProject {
     throw new Error("Main arm inner mount width must be a positive finite value.");
   }
   return {
-    schemaVersion: 23,
     id: project.id,
     name: project.name,
     frontLowerControlArmPickup: { widthMm, rearWidthMm, controlArmDepthMm, frontHeightMm, rearHeightMm },

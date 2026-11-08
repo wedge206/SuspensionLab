@@ -5,28 +5,15 @@ const STORAGE_KEY = "suspension-lab.projects.v1";
 
 export interface ProjectLibrary {
   projects: SuspensionProject[];
-  resetLegacyProjects: boolean;
 }
 
 export function loadProjects(): ProjectLibrary {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return { projects: [], resetLegacyProjects: false };
+  if (!raw) return { projects: [] };
   const value: unknown = JSON.parse(raw);
   if (!Array.isArray(value)) throw new Error("Saved project storage is invalid. Export or clear browser storage to recover.");
   const projects = value.map(validateProject);
-  const resetLegacyProjects = value.some((project) =>
-    !project || typeof project !== "object" ||
-    !("schemaVersion" in project) || project.schemaVersion !== 23 ||
-    !("frontLowerControlArmPickup" in project) ||
-    Object.keys(project).some((key) =>
-      key !== "schemaVersion" && key !== "id" && key !== "name" &&
-      key !== "frontLowerControlArmPickup" && key !== "frontControlArm" &&
-      key !== "steeringRack" && key !== "frontTopMount" && key !== "wheelKnuckle" &&
-      key !== "wheelTire" && key !== "suspension" && key !== "rearSuspension"));
-  if (resetLegacyProjects) {
-    saveProjects(projects);
-  }
-  return { projects, resetLegacyProjects };
+  return { projects };
 }
 
 export function saveProjects(projects: SuspensionProject[]): void {

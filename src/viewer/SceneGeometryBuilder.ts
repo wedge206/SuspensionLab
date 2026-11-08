@@ -1,28 +1,6 @@
 import * as THREE from "three";
-import {
-  FRONT_PICKUP_STATION_MM,
-  controlArmPickupPoints,
-  frontTopMountPoints,
-  orientHubPoint,
-  rearCamberArmInnerMountPoints,
-  rearMainArmInnerMountPoints,
-  rearMainArmOuterMountPoints,
-  rearTrailingArmMountPoints,
-  rearToeArmInnerMountPoints,
-  solveRearArmMounts,
-  steeredHubFacePoints,
-  steeringKnucklePivotPoints,
-  steeringRackPivotPoints,
-  suspensionMotionRatios,
-  strutMountAngleSegments,
-  strutMountPoints,
-  tireOverallDiameterMm,
-  tireTreadCenter,
-  tieRodConstrainedKnucklePoints,
-  trueHubFaceGeometry,
-  wheelAlignmentMeasurements,
-} from "../domain/coordinates";
-import type { SuspensionProject, Vec3 } from "../domain/types";
+import { FRONT_PICKUP_STATION_MM } from "../domain/coordinates";
+import type { GroundStations, SuspensionSnapshot } from "../domain/kinematics";
 import type { WheelAlignmentMeasurements } from "../domain/coordinates";
 
 const FRAME_HALF_LENGTH = 850;
@@ -236,7 +214,6 @@ export class SceneGeometryBuilder {
   scrubRadiusGeometryVisible = true;
   scrubRadiusGeometryAvailable: [boolean, boolean] = [false, false];
   groundGeometry!: GroundSceneGeometry;
-  project?: SuspensionProject;
   get frame() { return this.groundGeometry.frame; }
   get grid() { return this.groundGeometry.grid; }
   get compass() { return this.groundGeometry.compass; }
@@ -424,23 +401,12 @@ export class SceneGeometryBuilder {
     this.geometryStatus.hidden = true;
   }
 
-  initialize(initialProject: SuspensionProject): void {
-    const rearMounts = rearMainArmInnerMountPoints(
-      initialProject.rearSuspension.frontToRearLengthMm,
-      initialProject.rearSuspension.mainArmInnerMountWidthMm,
-      initialProject.rearSuspension.mainArmInnerMountHeightMm,
-    );
-    const toeMounts = rearToeArmInnerMountPoints(
-      rearMounts,
-      initialProject.rearSuspension.toeArmInnerMountWidthMm,
-      initialProject.rearSuspension.toeArmInnerMountHeightMm,
-      initialProject.rearSuspension.toeArmMainArmWidthMm,
-    );
+  initialize(ground: GroundStations): void {
     this.groundGeometry = this.createGroundAndFrame(
-      initialProject.frontLowerControlArmPickup.controlArmDepthMm,
-      initialProject.frontLowerControlArmPickup.frontHeightMm,
-      rearMounts[0][0],
-      toeMounts[0][0],
+      ground.controlArmDepthMm,
+      ground.frontHeightMm,
+      ground.rear[0][0],
+      ground.toe[0][0],
     );
   }
 
@@ -461,72 +427,24 @@ export class SceneGeometryBuilder {
     this.hubFaceExtensions.renderOrder = 3;
   }
 
-  update(project: SuspensionProject): void {
-    this.project = project;
-    const { widthMm, rearWidthMm, frontHeightMm, rearHeightMm, controlArmDepthMm } =
-      project.frontLowerControlArmPickup;
-    const points = controlArmPickupPoints(
-      widthMm,
-      rearWidthMm,
-      frontHeightMm,
-      rearHeightMm,
-      controlArmDepthMm,
-      project.frontControlArm.lengthMm,
-      project.frontControlArm.ballJointOffsetMm,
-      project.frontControlArm.leftRotationRad,
-      project.frontControlArm.rightRotationRad,
-    );
+  update(snapshot: SuspensionSnapshot): void {
+    const {
+      ground, points, rearMounts, camberArmMounts, trailingArmMounts, toeArmMounts,
+      rearSolution, rackPivots, topMounts, knucklePoints, knuckleValid,
+      hubFaces, trueHubFaces, tireCenters, tireDiameterMm, tireWidthMm, groundAxisPoints,
+      alignment, angleMarkers, strutOutOfRange,
+      rackHousingWidthMm, geometryMessage, geometryStatusKey,
+    } = snapshot;
     const positions = [...points.front, ...points.rear];
     this.pickups.forEach((pickup, index) => pickup.position.set(...positions[index]));
-    const rearMounts = rearMainArmInnerMountPoints(
-      project.rearSuspension.frontToRearLengthMm,
-      project.rearSuspension.mainArmInnerMountWidthMm,
-      project.rearSuspension.mainArmInnerMountHeightMm,
-    );
     this.rearMainArmInnerMounts.forEach((mount, index) => mount.position.set(...rearMounts[index]));
-    const camberArmMounts = rearCamberArmInnerMountPoints(
-      rearMounts,
-      project.rearSuspension.camberArmInnerMountHeightMm,
-      project.rearSuspension.camberArmInnerMountForwardOffsetMm,
-      project.rearSuspension.camberArmInnerMountWidthMm,
-    );
     this.rearCamberArmInnerMounts.forEach((mount, index) => mount.position.set(...camberArmMounts[index]));
-    const trailingArmMounts = rearTrailingArmMountPoints(
-      rearMounts,
-      project.rearHub.trailingArmMountWidthMm,
-      project.rearHub.trailingArmMountHeightMm,
-      project.rearHub.trailingArmMountForwardOffsetMm,
-    );
     this.rearTrailingArmMounts.forEach((mount, index) => mount.position.set(...trailingArmMounts[index]));
-    const nominalOuterMounts = rearMainArmOuterMountPoints(
-      rearMounts,
-      trailingArmMounts,
-      project.rearSuspension.mainArmLengthMm,
-      project.rearHub.trailingArmLengthMm,
-      project.rearHub.mainArmOuterMountStaticHeightMm,
-      project.rearSuspension.leftVerticalOffsetMm,
-      project.rearSuspension.rightVerticalOffsetMm,
-    );
-    const toeArmMounts = rearToeArmInnerMountPoints(
-      rearMounts,
-      project.rearSuspension.toeArmInnerMountWidthMm,
-      project.rearSuspension.toeArmInnerMountHeightMm,
-      project.rearSuspension.toeArmMainArmWidthMm,
-    );
     this.updateGroundGrid(this.grid, this.compass, this.rearMarker, rearMounts[0][0]);
     this.rearToeArmInnerMounts.forEach((mount, index) => mount.position.set(...toeArmMounts[index]));
-    let rearGeometryMessage = "";
-    try {
-      const solution = solveRearArmMounts(
-        rearMounts, toeArmMounts, nominalOuterMounts,
-        project.rearSuspension.mainArmLengthMm, project.rearSuspension.toeArmLengthMm,
-        project.rearHub.toeArmOuterMountHeightOffsetMm,
-        project.rearHub.toeArmOuterMountForwardOffsetMm,
-        project.rearHub.toeArmOuterMountLateralOffsetMm,
-        project.rearHub.mainArmOuterMountStaticHeightMm,
-      );
-      const rearOuterMounts = solution.mainOuterMounts;
-      const toeArmOuterMounts = solution.toeOuterMounts;
+    if (rearSolution) {
+      const rearOuterMounts = rearSolution.mainOuterMounts;
+      const toeArmOuterMounts = rearSolution.toeOuterMounts;
       this.rearMainArmOuterMounts.forEach((mount, index) => mount.position.set(...rearOuterMounts[index]));
       this.rearToeArmOuterMounts.forEach((mount, index) => mount.position.set(...toeArmOuterMounts[index]));
       this.rearMainArms.geometry.setFromPoints(rearMounts.flatMap((mount, index) => [
@@ -542,117 +460,26 @@ export class SceneGeometryBuilder {
         line.geometry.computeBoundingSphere();
       }
       this.setRearArmVisibility(true);
-    } catch (error) {
-      if (!(error instanceof Error) ||
-          error.message !== "Rear arm lengths cannot reach both outer mounts with the current geometry.") throw error;
+    } else {
       this.setRearArmVisibility(false);
-      rearGeometryMessage = error.message;
     }
     points.ballJoint.forEach((point, index) => this.ballJoints[index].position.set(...point));
-    const rackPivots = steeringRackPivotPoints(
-      project.steeringRack.widthMm,
-      project.steeringRack.centerlineHeightMm,
-      project.steeringRack.centerlineOffsetMm,
-      project.steeringRack.rackTravelMm,
-    );
     rackPivots.forEach((point, index) => this.steeringRackPivots[index].position.set(...point));
-    const topMounts = frontTopMountPoints(
-      project.frontTopMount.widthMm,
-      project.frontTopMount.heightMm,
-      project.frontTopMount.offsetMm,
-    );
-    let knucklePoints: ReturnType<typeof tieRodConstrainedKnucklePoints>;
-    let knuckleValid = true;
-    let geometryError = "";
-    try {
-      knucklePoints = tieRodConstrainedKnucklePoints(
-        points.ballJoint,
-        rackPivots,
-        topMounts,
-        project.wheelKnuckle.steeringPivotHeightMm,
-        project.wheelKnuckle.steeringPivotDepthMm,
-        project.wheelKnuckle.steeringPivotOffsetMm,
-        project.wheelKnuckle.strutMountHeightMm,
-        project.wheelKnuckle.strutMountOffsetMm,
-        project.wheelKnuckle.strutMountLocationMm,
-        -project.wheelKnuckle.strutMountAngleDeg,
-        project.steeringRack.tieRodLengthMm,
-        project.wheelKnuckle.strutMinLengthMm,
-        project.wheelKnuckle.strutMaxLengthMm,
-      );
-    } catch (error) {
-      if (!(error instanceof Error) ||
-          ![
-            "Tie Rod Length cannot be satisfied at the current ball joint position.",
-            "Strut angle cannot reach the fixed top mount.",
-          ].includes(error.message)) {
-        throw error;
-      }
-      knuckleValid = false;
-      this.setKnuckleVisibility(false);
-      geometryError = error.message;
-      knucklePoints = {
-        steeringPivots: steeringKnucklePivotPoints(
-          points.ballJoint,
-          project.wheelKnuckle.steeringPivotHeightMm,
-          project.wheelKnuckle.steeringPivotDepthMm,
-          project.wheelKnuckle.steeringPivotOffsetMm,
-        ),
-        strutMounts: strutMountPoints(
-          points.ballJoint,
-          project.wheelKnuckle.strutMountHeightMm,
-          project.wheelKnuckle.strutMountOffsetMm,
-          project.wheelKnuckle.strutMountLocationMm,
-        ),
-        orientations: [
-          { axis: [0, 0, 1], angleRad: 0, rollAxis: [0, 0, 1], rollAngleRad: 0 },
-          { axis: [0, 0, 1], angleRad: 0, rollAxis: [0, 0, 1], rollAngleRad: 0 },
-        ],
-        strutLengths: [0, 0],
-      };
-    }
-    if (knuckleValid) {
-      this.setKnuckleVisibility(true);
-    }
+    this.setKnuckleVisibility(knuckleValid);
     const steeringPivots = knucklePoints.steeringPivots;
     const strutMounts = knucklePoints.strutMounts;
     steeringPivots.forEach((point, index) => this.steeringPivots[index].position.set(...point));
-    const neutralSteeringPivots = steeringKnucklePivotPoints(
-      points.ballJoint,
-      project.wheelKnuckle.steeringPivotHeightMm,
-      project.wheelKnuckle.steeringPivotDepthMm,
-      project.wheelKnuckle.steeringPivotOffsetMm,
-    );
-    const neutralStrutMounts = strutMountPoints(
-      points.ballJoint,
-      project.wheelKnuckle.strutMountHeightMm,
-      project.wheelKnuckle.strutMountOffsetMm,
-      project.wheelKnuckle.strutMountLocationMm,
-    );
-    const hubFaces = steeredHubFacePoints(
-      points.ballJoint,
-      neutralSteeringPivots,
-      neutralStrutMounts,
-      project.wheelKnuckle.steeringPivotOffsetMm,
-      project.wheelKnuckle.strutMountLocationMm,
-      knucklePoints.orientations,
-    );
     hubFaces.forEach((face, index) => {
       this.hubFaces[index].geometry.setFromPoints(face.map((point) => new THREE.Vector3(...point)));
       this.hubFaces[index].geometry.setIndex([0, 1, 2]);
       this.hubFaces[index].geometry.computeVertexNormals();
       this.hubFaces[index].geometry.computeBoundingSphere();
     });
-    const trueHubFaces = hubFaces.map((face) => trueHubFaceGeometry(
-      face,
-      project.wheelKnuckle.hubHeightMm,
-      project.wheelKnuckle.hubSpacingMm,
-    ));
-    trueHubFaces.forEach((hubFace, index) => {
-      const verticalAxisSpan = topMounts[index][2] - points.ballJoint[index][2];
+    trueHubFaces.forEach((_hubFace, index) => {
       const steeringAxisLine = this.steeringAxisGroundLines[index];
       const tireCenterLine = this.tireCenterGroundLines[index];
-      if (!knuckleValid || Math.abs(verticalAxisSpan) < 1e-9) {
+      const groundPoint = groundAxisPoints[index];
+      if (!groundPoint) {
         this.scrubRadiusGeometryAvailable[index] = false;
         steeringAxisLine.visible = false;
         tireCenterLine.visible = false;
@@ -660,26 +487,14 @@ export class SceneGeometryBuilder {
       }
       this.scrubRadiusGeometryAvailable[index] = true;
 
-      const groundIntersectionRatio = -points.ballJoint[index][2] / verticalAxisSpan;
-      const steeringAxisGroundPoint = new THREE.Vector3(
-        points.ballJoint[index][0] +
-          (topMounts[index][0] - points.ballJoint[index][0]) * groundIntersectionRatio,
-        points.ballJoint[index][1] +
-          (topMounts[index][1] - points.ballJoint[index][1]) * groundIntersectionRatio,
-        0,
-      );
       steeringAxisLine.geometry.setFromPoints([
         new THREE.Vector3(...topMounts[index]),
-        steeringAxisGroundPoint,
+        new THREE.Vector3(...groundPoint),
       ]);
       steeringAxisLine.computeLineDistances();
       steeringAxisLine.visible = this.scrubRadiusGeometryVisible;
 
-      const tireCenter = tireTreadCenter(
-        hubFace.center,
-        hubFace.normal,
-        project.wheelTire.wheelOffsetMm,
-      );
+      const tireCenter = tireCenters[index];
       tireCenterLine.geometry.setFromPoints([
         new THREE.Vector3(...tireCenter),
         new THREE.Vector3(tireCenter[0], tireCenter[1], 0),
@@ -687,25 +502,7 @@ export class SceneGeometryBuilder {
       tireCenterLine.computeLineDistances();
       tireCenterLine.visible = this.scrubRadiusGeometryVisible;
     });
-    this.onAlignmentUpdate(knuckleValid
-      ? wheelAlignmentMeasurements(
-        [trueHubFaces[0].normal, trueHubFaces[1].normal],
-        points.ballJoint,
-        topMounts,
-        tireOverallDiameterMm(
-          project.wheelTire.wheelDiameterIn,
-          project.wheelTire.tireSectionWidthMm,
-          project.wheelTire.tireAspectRatio,
-        ),
-        trueHubFaces.map((hubFace) => tireTreadCenter(
-          hubFace.center,
-          hubFace.normal,
-          project.wheelTire.wheelOffsetMm,
-        )) as [Vec3, Vec3],
-        suspensionMotionRatios(project),
-        project.suspension.springRateNPerMm,
-      )
-      : null);
+    this.onAlignmentUpdate(alignment);
     this.hubConstructionLines.geometry.setFromPoints(trueHubFaces.flatMap((hubFace, index) => [
       new THREE.Vector3(...points.ballJoint[index]),
       new THREE.Vector3(...hubFace.heightPoint),
@@ -719,18 +516,14 @@ export class SceneGeometryBuilder {
       );
       this.hubFaceCircles[index].geometry.computeBoundingSphere();
       const tire = this.tireTreads[index];
-      const tireCenter = tireTreadCenter(hubFace.center, hubFace.normal, project.wheelTire.wheelOffsetMm);
+      const tireCenter = tireCenters[index];
       tire.position.set(...tireCenter);
       tire.quaternion.setFromUnitVectors(
         new THREE.Vector3(0, 1, 0),
         new THREE.Vector3(...hubFace.normal).normalize(),
       );
-      const radius = tireOverallDiameterMm(
-        project.wheelTire.wheelDiameterIn,
-        project.wheelTire.tireSectionWidthMm,
-        project.wheelTire.tireAspectRatio,
-      ) / 2;
-      tire.scale.set(radius, project.wheelTire.tireSectionWidthMm, radius);
+      const radius = tireDiameterMm / 2;
+      tire.scale.set(radius, tireWidthMm, radius);
       const horizontalNormalLength = Math.hypot(hubFace.normal[0], hubFace.normal[1]);
       const widthDirection = new THREE.Vector2(
         hubFace.normal[0] / horizontalNormalLength,
@@ -738,7 +531,7 @@ export class SceneGeometryBuilder {
       );
       const lengthDirection = new THREE.Vector2(-widthDirection.y, widthDirection.x);
       const groundCenter = new THREE.Vector2(tireCenter[0], tireCenter[1]);
-      const halfWidth = project.wheelTire.tireSectionWidthMm / 2;
+      const halfWidth = tireWidthMm / 2;
       const halfLength = radius;
       const corners = [
         groundCenter.clone().addScaledVector(lengthDirection, halfLength).addScaledVector(widthDirection, halfWidth),
@@ -782,39 +575,11 @@ export class SceneGeometryBuilder {
       strut.position.copy(start).add(end).multiplyScalar(0.5);
       strut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
       strut.scale.set(1, strutLengths[index], 1);
-      const isOutOfRange = strutLengths[index] < project.wheelKnuckle.strutMinLengthMm ||
-        strutLengths[index] > project.wheelKnuckle.strutMaxLengthMm;
-      (strut.material as THREE.MeshStandardMaterial).color.set(isOutOfRange ? 0xf06e55 : 0xd982c7);
-    });
-    const neutralAngleMarkers = strutMountAngleSegments(
-      strutMountPoints(
-        points.ballJoint,
-        project.wheelKnuckle.strutMountHeightMm,
-        project.wheelKnuckle.strutMountOffsetMm,
-        project.wheelKnuckle.strutMountLocationMm,
-      ),
-      -project.wheelKnuckle.strutMountAngleDeg,
-    );
-    const angleMarkers = neutralAngleMarkers.map((point, index) => {
-      const side: 0 | 1 = index < 2 ? 0 : 1;
-      return orientHubPoint(point, points.ballJoint[side], knucklePoints.orientations[side]);
+      (strut.material as THREE.MeshStandardMaterial).color.set(strutOutOfRange[index] ? 0xf06e55 : 0xd982c7);
     });
     this.strutMountAngleMarkers.geometry.setFromPoints(angleMarkers.map((point) =>
       new THREE.Vector3(...point)));
     this.strutMountAngleMarkers.geometry.computeBoundingSphere();
-    const outOfRangeSides = strutLengths
-      .map((length, index) => ({ length, side: index === 0 ? "left" : "right" }))
-      .filter(({ length }) =>
-        length < project.wheelKnuckle.strutMinLengthMm ||
-        length > project.wheelKnuckle.strutMaxLengthMm);
-    const strutWarning = outOfRangeSides.length
-      ? `Strut length outside configured ${project.wheelKnuckle.strutMinLengthMm}-${project.wheelKnuckle.strutMaxLengthMm} mm travel: ${
-        outOfRangeSides.map(({ side, length }) => `${side} ${length.toFixed(1)} mm`).join(", ")
-      }.`
-      : "";
-    const geometryMessage = [rearGeometryMessage, geometryError, strutWarning].filter(Boolean).join(" ");
-    const geometryStatusKey = [rearGeometryMessage, geometryError, ...outOfRangeSides.map(({ side }) => side)]
-      .filter(Boolean).join("|");
     this.geometryStatus.textContent = geometryMessage;
     this.geometryStatus.hidden = !geometryMessage;
     if (geometryStatusKey !== this.lastGeometryMessage) {
@@ -827,7 +592,7 @@ export class SceneGeometryBuilder {
 
     const rackStart = new THREE.Vector3(...rackPivots[0]);
     const rackEnd = new THREE.Vector3(...rackPivots[1]);
-    const housingHalfWidth = project.steeringRack.housingWidthMm / 2;
+    const housingHalfWidth = rackHousingWidthMm / 2;
     const housingPoints: [THREE.Vector3, THREE.Vector3] = [
       new THREE.Vector3(rackStart.x, housingHalfWidth, rackStart.z),
       new THREE.Vector3(rackEnd.x, -housingHalfWidth, rackEnd.z),
@@ -838,7 +603,7 @@ export class SceneGeometryBuilder {
       new THREE.Vector3(0, 1, 0),
       rackDirection.normalize(),
     );
-    this.steeringRack.scale.set(1, project.steeringRack.housingWidthMm, 1);
+    this.steeringRack.scale.set(1, rackHousingWidthMm, 1);
     this.steeringRackExtensions.geometry.setFromPoints([
       housingPoints[0],
       rackStart,
@@ -854,8 +619,8 @@ export class SceneGeometryBuilder {
     ]);
     this.tieRods.geometry.computeBoundingSphere();
     this.frame.geometry.setFromPoints(this.framePoints(
-      controlArmDepthMm,
-      frontHeightMm,
+      ground.controlArmDepthMm,
+      ground.frontHeightMm,
       [rearMounts[0][0], toeArmMounts[0][0]],
     ));
     this.frame.geometry.computeBoundingSphere();

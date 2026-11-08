@@ -1,16 +1,8 @@
 import * as THREE from "three";
 import {
-  controlArmPickupPoints,
-  frontTopMountPoints,
-  rearMainArmInnerMountPoints,
-  rearMainArmOuterMountPoints,
-  rearTrailingArmMountPoints,
-  rearToeArmInnerMountPoints,
-  solveRearArmMounts,
-  steeringRackPivotPoints,
-  steeringRackTravelLimitMm,
-  tieRodConstrainedKnucklePoints,
-} from "../domain/coordinates";
+  acceptedFrontAngle, acceptedRearOffset, clampRackTravel, frontConstraintViolation,
+  MAX_CONTROL_ARM_DRAG_ANGLE_RAD,
+} from "../domain/dragConstraints";
 import type { SuspensionProject } from "../domain/types";
 
 export interface SceneInteractionContext {
@@ -47,8 +39,6 @@ export interface SceneInteractionState {
   dragVerticalSign: number;
   dragChanged: boolean;
 }
-
-const MAX_CONTROL_ARM_DRAG_ANGLE_RAD = Math.PI / 2;
 
 export class SceneInteractionController {
   readonly state: SceneInteractionState = {
@@ -182,7 +172,9 @@ export class SceneInteractionController {
     this.state.dragRotationRecoverySign = Math.abs(this.state.dragStartAngle) > MAX_CONTROL_ARM_DRAG_ANGLE_RAD
       ? Math.sign(this.state.dragStartAngle)
       : 0;
-    this.state.dragAcceptedConstraintViolation = this.dragConstraintViolation(index, this.state.dragAcceptedAngle);
+    this.state.dragAcceptedConstraintViolation = frontConstraintViolation(
+      this.project, index === 0 ? 0 : 1, this.state.dragAcceptedAngle,
+    );
     const axis = this.pickups[index + 2].position.clone().sub(this.pickups[index].position).normalize();
     const radial = this.ballJoints[index].position.clone().sub(this.pickups[index].position);
     const verticalTangent = axis.cross(radial).z;
@@ -198,34 +190,13 @@ export class SceneInteractionController {
     if (this.state.draggingRearOuterMountIndex !== null && this.project) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      const index = this.state.draggingRearOuterMountIndex;
+      const index: 0 | 1 = this.state.draggingRearOuterMountIndex === 0 ? 0 : 1;
       const requested = this.state.dragStartRearHeightOffsetMm +
         (this.state.dragStartY - event.clientY) / this.state.rearVerticalPixelsPerMm;
       const current = index === 0
         ? this.project.rearSuspension.leftVerticalOffsetMm
         : this.project.rearSuspension.rightVerticalOffsetMm;
-      const innerHeight = this.project.rearSuspension.mainArmInnerMountHeightMm;
-      const staticHeight = this.project.rearHub.mainArmOuterMountStaticHeightMm;
-      const length = this.project.rearSuspension.mainArmLengthMm;
-      const target = Math.max(innerHeight - length - staticHeight, Math.min(innerHeight + length - staticHeight, requested));
-      let offset = current;
-      const steps = Math.min(2048, Math.max(1, Math.ceil(Math.abs(target - current) / 5)));
-      for (let step = 1; step <= steps; step += 1) {
-        const candidate = current + (target - current) * step / steps;
-        if (this.rearHeightReachable(index, candidate)) {
-          offset = candidate;
-        } else {
-          let valid = offset;
-          let invalid = candidate;
-          for (let iteration = 0; iteration < 30; iteration += 1) {
-            const middle = (valid + invalid) / 2;
-            if (this.rearHeightReachable(index, middle)) valid = middle;
-            else invalid = middle;
-          }
-          offset = valid;
-          break;
-        }
-      }
+      const offset = acceptedRearOffset(this.project, index, requested);
       if (Math.abs(offset - current) > 1e-10) this.state.dragChanged = true;
       if (index === 0) this.project.rearSuspension.leftVerticalOffsetMm = offset;
       else this.project.rearSuspension.rightVerticalOffsetMm = offset;
@@ -236,11 +207,6 @@ export class SceneInteractionController {
     if (this.state.draggingSteeringRackPivotIndex !== null && this.project) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      const travelLimit = steeringRackTravelLimitMm(
-        this.project.steeringRack.widthMm,
-        this.project.steeringRack.housingWidthMm,
-        this.project.steeringRack.steeringLimiterMm,
-      );
       const directionLengthSquared = this.state.rackTravelScreenDirection.lengthSq();
       const pointerDelta = new THREE.Vector2(
         event.clientX - this.state.dragStartRackPointerX,
@@ -250,7 +216,7 @@ export class SceneInteractionController {
         (directionLengthSquared > 1e-8
           ? pointerDelta.dot(this.state.rackTravelScreenDirection) / directionLengthSquared
           : 0);
-      const rackTravelMm = Math.max(-travelLimit, Math.min(travelLimit, requestedTravel));
+      const rackTravelMm = clampRackTravel(this.project, requestedTravel);
       if (Math.abs(rackTravelMm - this.project.steeringRack.rackTravelMm) > 1e-10) {
         this.state.dragRackChanged = true;
       }
@@ -266,22 +232,10 @@ export class SceneInteractionController {
       const requestedAngle =
         (this.state.dragStartY - event.clientY) * 0.01 * this.state.dragVerticalSign;
       const targetAngle = this.state.dragStartAngle + requestedAngle;
-      let acceptedAngle = targetAngle;
-      if (!this.isDragCandidateAllowed(targetAngle, dragIndex)) {
-        const angleDelta = targetAngle - this.state.dragAcceptedAngle;
-        let validFraction = 0;
-        let invalidFraction = 1;
-        for (let iteration = 0; iteration < 30; iteration += 1) {
-          const fraction = (validFraction + invalidFraction) / 2;
-          const candidate = this.state.dragAcceptedAngle + angleDelta * fraction;
-          if (this.isDragCandidateAllowed(candidate, dragIndex)) {
-            validFraction = fraction;
-          } else {
-            invalidFraction = fraction;
-          }
-        }
-        acceptedAngle = this.state.dragAcceptedAngle + angleDelta * validFraction;
-      }
+      const acceptedAngle = acceptedFrontAngle(
+        this.project, dragIndex, targetAngle, this.state.dragAcceptedAngle,
+        this.state.dragAcceptedConstraintViolation, this.state.dragRotationRecoverySign,
+      );
       const currentAngle = dragIndex === 0
         ? this.project.frontControlArm.leftRotationRad
         : this.project.frontControlArm.rightRotationRad;
@@ -294,7 +248,7 @@ export class SceneInteractionController {
         this.project.frontControlArm.rightRotationRad = acceptedAngle;
       }
       this.state.dragAcceptedAngle = acceptedAngle;
-      this.state.dragAcceptedConstraintViolation = this.dragConstraintViolation(dragIndex, acceptedAngle);
+      this.state.dragAcceptedConstraintViolation = frontConstraintViolation(this.project, dragIndex, acceptedAngle);
       if (Math.abs(acceptedAngle) <= MAX_CONTROL_ARM_DRAG_ANGLE_RAD) {
         this.state.dragRotationRecoverySign = 0;
       }
@@ -382,42 +336,6 @@ export class SceneInteractionController {
     return index < 0 ? null : index;
   }
 
-  private rearHeightReachable(index: number, offset: number): boolean {
-    if (!this.project) return false;
-    const project = this.project;
-    const inner = rearMainArmInnerMountPoints(
-      project.rearSuspension.frontToRearLengthMm,
-      project.rearSuspension.mainArmInnerMountWidthMm,
-      project.rearSuspension.mainArmInnerMountHeightMm,
-    );
-    const toe = rearToeArmInnerMountPoints(
-      inner, project.rearSuspension.toeArmInnerMountWidthMm,
-      project.rearSuspension.toeArmInnerMountHeightMm, project.rearSuspension.toeArmMainArmWidthMm,
-    );
-    const trailing = rearTrailingArmMountPoints(
-      inner, project.rearHub.trailingArmMountWidthMm,
-      project.rearHub.trailingArmMountHeightMm, project.rearHub.trailingArmMountForwardOffsetMm,
-    );
-    const nominal = rearMainArmOuterMountPoints(
-      inner, trailing, project.rearSuspension.mainArmLengthMm,
-      project.rearHub.trailingArmLengthMm, project.rearHub.mainArmOuterMountStaticHeightMm,
-      index === 0 ? offset : project.rearSuspension.leftVerticalOffsetMm,
-      index === 1 ? offset : project.rearSuspension.rightVerticalOffsetMm,
-    );
-    try {
-      solveRearArmMounts(
-        inner, toe, nominal, project.rearSuspension.mainArmLengthMm, project.rearSuspension.toeArmLengthMm,
-        project.rearHub.toeArmOuterMountHeightOffsetMm, project.rearHub.toeArmOuterMountForwardOffsetMm,
-        project.rearHub.toeArmOuterMountLateralOffsetMm, project.rearHub.mainArmOuterMountStaticHeightMm,
-      );
-      return true;
-    } catch (error) {
-      if (error instanceof Error &&
-          error.message === "Rear arm lengths cannot reach both outer mounts with the current geometry.") return false;
-      throw error;
-    }
-  }
-
   private intersectSteeringRackPivot(event: PointerEvent): number | null {
     const bounds = this.canvas.getBoundingClientRect();
     this.pointer.set(
@@ -429,88 +347,6 @@ export class SceneInteractionController {
     if (!hit) return null;
     const index = this.steeringRackPivots.findIndex((pivot) => pivot.uuid === hit.object.uuid);
     return index < 0 ? null : index;
-  }
-
-  private dragConstraintViolation(index: number, angle: number): [number, number] {
-    const rotationViolation = Math.max(0, Math.abs(angle) - MAX_CONTROL_ARM_DRAG_ANGLE_RAD);
-    if (!this.project) return [rotationViolation, Number.POSITIVE_INFINITY];
-    const project = this.project;
-    const rotations: [number, number] = [
-      project.frontControlArm.leftRotationRad,
-      project.frontControlArm.rightRotationRad,
-    ];
-    rotations[index] = angle;
-    const { widthMm, rearWidthMm, frontHeightMm, rearHeightMm, controlArmDepthMm } =
-      project.frontLowerControlArmPickup;
-    const points = controlArmPickupPoints(
-      widthMm,
-      rearWidthMm,
-      frontHeightMm,
-      rearHeightMm,
-      controlArmDepthMm,
-      project.frontControlArm.lengthMm,
-      project.frontControlArm.ballJointOffsetMm,
-      rotations[0],
-      rotations[1],
-    );
-    const rackPivots = steeringRackPivotPoints(
-      project.steeringRack.widthMm,
-      project.steeringRack.centerlineHeightMm,
-      project.steeringRack.centerlineOffsetMm,
-      project.steeringRack.rackTravelMm,
-    );
-    const topMounts = frontTopMountPoints(
-      project.frontTopMount.widthMm,
-      project.frontTopMount.heightMm,
-      project.frontTopMount.offsetMm,
-    );
-    try {
-      const knucklePoints = tieRodConstrainedKnucklePoints(
-        points.ballJoint,
-        rackPivots,
-        topMounts,
-        project.wheelKnuckle.steeringPivotHeightMm,
-        project.wheelKnuckle.steeringPivotDepthMm,
-        project.wheelKnuckle.steeringPivotOffsetMm,
-        project.wheelKnuckle.strutMountHeightMm,
-        project.wheelKnuckle.strutMountOffsetMm,
-        project.wheelKnuckle.strutMountLocationMm,
-        -project.wheelKnuckle.strutMountAngleDeg,
-        project.steeringRack.tieRodLengthMm,
-        project.wheelKnuckle.strutMinLengthMm,
-        project.wheelKnuckle.strutMaxLengthMm,
-      );
-      const travelViolation = knucklePoints.strutLengths.reduce((violation, length) =>
-        violation +
-        Math.max(0, project.wheelKnuckle.strutMinLengthMm - length) +
-        Math.max(0, length - project.wheelKnuckle.strutMaxLengthMm), 0);
-      return [rotationViolation, travelViolation];
-    } catch (error) {
-      if (error instanceof Error &&
-          [
-            "Tie Rod Length cannot be satisfied at the current ball joint position.",
-            "Strut angle cannot reach the fixed top mount.",
-          ].includes(error.message)) {
-        return [rotationViolation, Number.POSITIVE_INFINITY];
-      }
-      throw error;
-    }
-  }
-
-  private isNoWorseConstraint(candidate: [number, number], baseline: [number, number]): boolean {
-    return candidate[0] <= baseline[0] + 1e-8 && candidate[1] <= baseline[1] + 1e-8;
-  }
-
-  private isDragCandidateAllowed(angle: number, index: 0 | 1): boolean {
-    if (this.state.dragRotationRecoverySign !== 0 &&
-        Math.abs(angle) > MAX_CONTROL_ARM_DRAG_ANGLE_RAD &&
-        Math.sign(angle) !== this.state.dragRotationRecoverySign) {
-      return false;
-    }
-    return this.isNoWorseConstraint(
-      this.dragConstraintViolation(index, angle),
-      this.state.dragAcceptedConstraintViolation,
-    );
   }
 
   private setHoveredBallJoint(index: number | null): void {

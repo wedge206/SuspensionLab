@@ -4,6 +4,7 @@ import { SceneGeometryBuilder } from "./SceneGeometryBuilder";
 import { SceneInteractionController } from "./SceneInteractionController";
 import type { SuspensionProject } from "../domain/types";
 import type { WheelAlignmentMeasurements } from "../domain/coordinates";
+import { calculateGroundStations, solveSuspension } from "../domain/kinematics";
 
 export class ChassisScene {
   private readonly rendering: SceneRenderer;
@@ -35,7 +36,7 @@ export class ChassisScene {
     const key = new THREE.DirectionalLight(0xffffff, 3.2);
     key.position.set(900, -800, 1400);
     this.scene.add(key);
-    this.geometryBuilder.initialize(initialProject);
+    this.geometryBuilder.initialize(calculateGroundStations(initialProject));
     this.geometryBuilder.addToScene(this.scene);
     this.interaction = new SceneInteractionController(this.renderer.domElement, {
       camera: this.camera,
@@ -54,7 +55,7 @@ export class ChassisScene {
 
   update(project: SuspensionProject): void {
     this.project = project;
-    this.geometryBuilder.update(project);
+    this.geometryBuilder.update(solveSuspension(project));
   }
 
   setScrubRadiusGeometryVisible(visible: boolean): void {

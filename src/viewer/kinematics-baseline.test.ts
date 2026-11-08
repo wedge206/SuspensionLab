@@ -78,30 +78,55 @@ describe("viewer kinematics behavior", () => {
         builder.addToScene(scene);
         const geometryDispose = vi.spyOn(builder.rearCamberArmOuterMounts[0].geometry, "dispose");
         const materialDispose = vi.spyOn(builder.rearCamberArmOuterMounts[0].material, "dispose");
+        const faceGeometryDispose = vi.spyOn(builder.rearHubFaces.geometry, "dispose");
+        const faceMaterialDispose = vi.spyOn(builder.rearHubFaces.material, "dispose");
+        expect(scene.children).toContain(builder.rearHubFaces);
         for (const [height, forward, lateral, travel] of [[97, 189, 0, 0], [125, -20, 35, 40], [80, 70, -45, -40]]) {
             project.rearHub.camberArmOuterMountHeightMm = height;
             project.rearHub.camberArmOuterMountForwardOffsetMm = forward;
             project.rearHub.camberArmOuterMountLateralOffsetMm = lateral;
             project.rearSuspension.leftVerticalOffsetMm = travel;
             builder.update(solveSuspension(project));
+            const edges = builder.rearOuterMountConnections.geometry.getAttribute("position");
+            const faces = builder.rearHubFaces.geometry.getAttribute("position");
+            expect(edges.count).toBe(12);
+            expect(faces.count).toBe(6);
+            expect(builder.rearHubFaces.visible).toBe(true);
             for (const side of [0, 1] as const) {
                 const main = builder.rearMainArmOuterMounts[side];
+                const toe = builder.rearToeArmOuterMounts[side];
                 const camber = builder.rearCamberArmOuterMounts[side];
                 expect(scene.children).toContain(camber);
                 expect(camber.visible).toBe(true);
-                expect(camber.position.x - main.position.x).toBeCloseTo(forward);
-                expect(camber.position.y - main.position.y).toBeCloseTo(side === 0 ? -lateral : lateral);
                 expect(camber.position.z - main.position.z).toBeCloseTo(height);
+                expect(camber.position.distanceTo(main.position)).toBeCloseTo(Math.hypot(forward, lateral, height));
+                const vertices = [main.position, toe.position, camber.position];
+                for (const [index, vertex] of vertices.entries()) {
+                    for (const [axis, get] of [["x", "getX"], ["y", "getY"], ["z", "getZ"]] as const) {
+                        expect(faces[get](side * 3 + index)).toBeCloseTo(vertex[axis], 3);
+                    }
+                }
+                for (const [index, vertex] of [main.position, toe.position, toe.position, camber.position, camber.position, main.position].entries()) {
+                    for (const [axis, get] of [["x", "getX"], ["y", "getY"], ["z", "getZ"]] as const) {
+                        expect(edges[get](side * 6 + index)).toBeCloseTo(vertex[axis], 3);
+                    }
+                }
             }
         }
         project.rearSuspension.mainArmLengthMm = 1;
         builder.update(solveSuspension(project));
         expect(builder.rearCamberArmOuterMounts.every((mount) => !mount.visible)).toBe(true);
+        expect(builder.rearHubFaces.visible).toBe(false);
+        expect(builder.rearOuterMountConnections.visible).toBe(false);
         project.rearSuspension.mainArmLengthMm = 370;
         builder.update(solveSuspension(project));
         expect(builder.rearCamberArmOuterMounts.every((mount) => mount.visible)).toBe(true);
+        expect(builder.rearHubFaces.visible).toBe(true);
+        expect(builder.rearOuterMountConnections.visible).toBe(true);
         builder.dispose();
         expect(geometryDispose).toHaveBeenCalledOnce();
         expect(materialDispose).toHaveBeenCalledOnce();
+        expect(faceGeometryDispose).toHaveBeenCalledOnce();
+        expect(faceMaterialDispose).toHaveBeenCalledOnce();
     });
 });

@@ -586,7 +586,7 @@ export const projectFields = {
                 group: "rear-1",
                 order: 56,
                 label: "Camber Arm Outer Mount Forward Offset",
-                hint: "Forward offset from the main arm outer mount",
+                hint: "Neutral forward offset from the main arm outer mount",
                 unit: "mm",
                 step: "1"
             }
@@ -597,7 +597,7 @@ export const projectFields = {
                 group: "rear-1",
                 order: 57,
                 label: "Camber Arm Outer Mount Lateral Offset",
-                hint: "Inward offset from the main arm outer mount (negative is outward)",
+                hint: "Neutral inward offset from the main arm outer mount (negative is outward)",
                 unit: "mm",
                 step: "1"
             }

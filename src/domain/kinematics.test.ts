@@ -27,26 +27,42 @@ describe("solved suspension snapshot", () => {
         expect(result.geometryMessage).toBe("");
     });
 
-    it("positions camber outer mounts relative to the solved main mounts as each side moves", () => {
+    it("keeps all hub side lengths fixed through independent rear suspension travel", () => {
         const value = project();
-        const baseline = solveSuspension(value);
-        value.rearSuspension.leftVerticalOffsetMm = 40;
+        const distance = (a: number[], b: number[]) =>
+            Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
         value.rearHub.camberArmOuterMountHeightMm = 110;
         value.rearHub.camberArmOuterMountForwardOffsetMm = -25;
         for (const lateral of [0, 30, -30]) {
             value.rearHub.camberArmOuterMountLateralOffsetMm = lateral;
-            const result = solveSuspension(value);
-            expect(result.rearSolution).not.toBeNull();
-            expect(result.camberArmOuterMounts).not.toBeNull();
-            for (const side of [0, 1] as const) {
-                const main = result.rearSolution!.mainOuterMounts[side];
-                const camber = result.camberArmOuterMounts![side];
-                expect(camber[0] - main[0]).toBeCloseTo(-25);
-                expect(camber[1] - main[1]).toBeCloseTo(side === 0 ? -lateral : lateral);
-                expect(camber[2] - main[2]).toBeCloseTo(110);
+            const expected = [
+                Math.hypot(200, 10),
+                Math.hypot(-25, lateral, 110),
+                Math.hypot(200 - (-25), 10 - lateral, 110),
+            ];
+            let firstToeDirection: number | undefined;
+            let lastToeDirection = 0;
+            for (const travel of [-60, -30, 0, 30, 60]) {
+                value.rearSuspension.leftVerticalOffsetMm = travel;
+                value.rearSuspension.rightVerticalOffsetMm = -travel;
+                const result = solveSuspension(value);
+                expect(result.rearSolution).not.toBeNull();
+                expect(result.camberArmOuterMounts).not.toBeNull();
+                for (const side of [0, 1] as const) {
+                    const main = result.rearSolution!.mainOuterMounts[side];
+                    const toe = result.rearSolution!.toeOuterMounts[side];
+                    const camber = result.camberArmOuterMounts![side];
+                    expect(distance(main, toe)).toBeCloseTo(expected[0], 8);
+                    expect(distance(main, camber)).toBeCloseTo(expected[1], 8);
+                    expect(distance(toe, camber)).toBeCloseTo(expected[2], 8);
+                    expect(camber[2] - main[2]).toBeCloseTo(110);
+                }
+                const main = result.rearSolution!.mainOuterMounts[0];
+                const toe = result.rearSolution!.toeOuterMounts[0];
+                lastToeDirection = Math.atan2(toe[1] - main[1], toe[0] - main[0]);
+                if (firstToeDirection === undefined) firstToeDirection = lastToeDirection;
             }
-            expect(result.rearSolution!.mainOuterMounts[0][2] - baseline.rearSolution!.mainOuterMounts[0][2]).toBeCloseTo(40);
-            expect(result.rearSolution!.mainOuterMounts[1]).toEqual(baseline.rearSolution!.mainOuterMounts[1]);
+            expect(Math.abs(lastToeDirection - firstToeDirection!)).toBeGreaterThan(1e-4);
         }
         value.rearSuspension.mainArmLengthMm = 1;
         expect(solveSuspension(value).camberArmOuterMounts).toBeNull();

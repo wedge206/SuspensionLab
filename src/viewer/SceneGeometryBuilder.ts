@@ -328,6 +328,10 @@ export class SceneGeometryBuilder {
         new THREE.BufferGeometry(),
         new THREE.LineBasicMaterial({color: 0xffffff}),
     );
+    readonly rearHubFaces = new THREE.Mesh(
+        new THREE.BufferGeometry(),
+        new THREE.MeshStandardMaterial({color: 0x777e89, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1}),
+    );
     readonly rearToeArms = new THREE.LineSegments(
         new THREE.BufferGeometry(),
         new THREE.LineBasicMaterial({color: 0xe7d36b}),
@@ -514,7 +518,7 @@ export class SceneGeometryBuilder {
             ...this.rearCamberArmInnerMounts, ...this.rearCamberArmOuterMounts,
             ...this.rearMainArmOuterMounts, ...this.rearToeArmInnerMounts,
             ...this.rearToeArmOuterMounts, ...this.rearTrailingArmMounts, this.rearMainArms,
-            this.rearOuterMountConnections, this.rearToeArms, ...this.ballJoints, ...this.steeringRackPivots,
+            this.rearOuterMountConnections, this.rearHubFaces, this.rearToeArms, ...this.ballJoints, ...this.steeringRackPivots,
             ...this.topMountPoints, ...this.steeringPivots, ...this.hubFaces, this.hubFaceExtensions,
             this.hubConstructionLines, ...this.hubFaceCircles, ...this.tireTreads, ...this.tireGroundOutlines,
             ...this.steeringAxisGroundLines, ...this.tireCenterGroundLines,
@@ -554,7 +558,15 @@ export class SceneGeometryBuilder {
             ]));
             this.rearOuterMountConnections.geometry.setFromPoints(rearOuterMounts.flatMap((mount, index) => [
                 new THREE.Vector3(...mount), new THREE.Vector3(...toeArmOuterMounts[index]),
+                new THREE.Vector3(...toeArmOuterMounts[index]), new THREE.Vector3(...camberArmOuterMounts[index]),
+                new THREE.Vector3(...camberArmOuterMounts[index]), new THREE.Vector3(...mount),
             ]));
+            this.rearHubFaces.geometry.setFromPoints(rearOuterMounts.flatMap((mount, index) => [
+                new THREE.Vector3(...mount), new THREE.Vector3(...toeArmOuterMounts[index]),
+                new THREE.Vector3(...camberArmOuterMounts[index]),
+            ]));
+            this.rearHubFaces.geometry.computeVertexNormals();
+            this.rearHubFaces.geometry.computeBoundingSphere();
             this.rearToeArms.geometry.setFromPoints(toeArmMounts.flatMap((mount, index) => [
                 new THREE.Vector3(...mount), new THREE.Vector3(...toeArmOuterMounts[index]),
             ]));
@@ -777,12 +789,14 @@ export class SceneGeometryBuilder {
     setRearArmVisibility(visible: boolean): void {
         for (const object of [
             ...this.rearMainArmOuterMounts, ...this.rearCamberArmOuterMounts, ...this.rearToeArmOuterMounts,
-            this.rearMainArms, this.rearOuterMountConnections, this.rearToeArms,
+            this.rearMainArms, this.rearOuterMountConnections, this.rearHubFaces, this.rearToeArms,
         ]) object.visible = visible;
     }
 
 
     dispose(): void {
+        this.rearHubFaces.geometry.dispose();
+        this.rearHubFaces.material.dispose();
         for (const pickup of [
             ...this.pickups,
             ...this.rearMainArmInnerMounts,

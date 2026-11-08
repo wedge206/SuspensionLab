@@ -132,6 +132,33 @@ export interface RearArmSolution {
     toeOuterMounts: [Vec3, Vec3];
 }
 
+export function rearCamberArmOuterMountPoints(
+    solution: RearArmSolution,
+    toeForwardOffsetMm: number,
+    toeLateralOffsetMm: number,
+    camberHeightMm: number,
+    camberForwardOffsetMm: number,
+    camberLateralOffsetMm: number,
+): [Vec3, Vec3] {
+    const points = ([0, 1] as const).map((side): Vec3 => {
+        const main = solution.mainOuterMounts[side];
+        const toe = solution.toeOuterMounts[side];
+        const toeNeutralY = side === 0 ? -toeLateralOffsetMm : toeLateralOffsetMm;
+        // Coincident main and toe pivots do not define a hub heading.
+        const yaw = toeForwardOffsetMm === 0 && toeLateralOffsetMm === 0 ? 0
+            : Math.atan2(toe[1] - main[1], toe[0] - main[0]) - Math.atan2(toeNeutralY, toeForwardOffsetMm);
+        const cos = Math.cos(yaw);
+        const sin = Math.sin(yaw);
+        const camberY = side === 0 ? -camberLateralOffsetMm : camberLateralOffsetMm;
+        return [
+            main[0] + cos * camberForwardOffsetMm - sin * camberY,
+            main[1] + sin * camberForwardOffsetMm + cos * camberY,
+            main[2] + camberHeightMm,
+        ];
+    });
+    return [points[0], points[1]];
+}
+
 export function solveRearArmMounts(
     mainMounts: [Vec3, Vec3],
     toeMounts: [Vec3, Vec3],

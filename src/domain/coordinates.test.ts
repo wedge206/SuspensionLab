@@ -6,6 +6,7 @@ import {
     hubFacePoints,
     orientHubPoint,
     rearCamberArmInnerMountPoints,
+    rearCamberArmOuterMountPoints,
     rearMainArmInnerMountPoints,
     rearMainArmOuterMountPoints,
     rearTrailingArmMountPoints,
@@ -29,6 +30,25 @@ import {
 import type {SuspensionProject} from "./types";
 
 describe("front lower control arm pickup points", () => {
+    it("rotates the camber outer mounts with the solved toe direction on each side", () => {
+        const camber = rearCamberArmOuterMountPoints({
+            mainOuterMounts: [[10, 100, 200], [20, -100, 250]],
+            toeOuterMounts: [[10, 300, 225], [20, -300, 275]],
+        }, 200, 0, 97, 150, 25);
+        expect(camber[0][0]).toBeCloseTo(35);
+        expect(camber[0][1]).toBeCloseTo(250);
+        expect(camber[0][2]).toBe(297);
+        expect(camber[1][0]).toBeCloseTo(45);
+        expect(camber[1][1]).toBeCloseTo(-250);
+        expect(camber[1][2]).toBe(347);
+    });
+
+    it("uses the neutral camber direction when coincident toe and main pivots cannot define a heading", () => {
+        expect(rearCamberArmOuterMountPoints({
+            mainOuterMounts: [[10, 100, 200], [20, -100, 250]],
+            toeOuterMounts: [[10, 100, 210], [20, -100, 260]],
+        }, 0, 0, 97, 189, -15)).toEqual([[199, 115, 297], [209, -115, 347]]);
+    });
     it("mirrors each pair by its own width and uses independently specified heights", () => {
         const points = controlArmPickupPoints(325, 275, 240, 210, 1300, 320, 12);
         expect(points.front).toEqual([[650, 325, 240], [650, -325, 240]]);

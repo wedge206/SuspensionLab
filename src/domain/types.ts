@@ -64,11 +64,16 @@ export interface SuspensionProject {
     toeArmLengthMm: number;
     leftRotationRad: number;
     rightRotationRad: number;
+    leftVerticalOffsetMm: number;
+    rightVerticalOffsetMm: number;
   };
   rearHub: {
     mainArmOuterMountStaticHeightMm: number;
     toeArmOuterMountOffsetMm: number;
     toeArmOuterMountHeightMm: number;
+    toeArmOuterMountHeightOffsetMm: number;
+    toeArmOuterMountForwardOffsetMm: number;
+    toeArmOuterMountLateralOffsetMm: number;
     trailingArmLengthMm: number;
     trailingArmMountHeightMm: number;
     trailingArmMountWidthMm: number;

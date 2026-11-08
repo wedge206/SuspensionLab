@@ -270,11 +270,11 @@ app.innerHTML = `
                 <span class="dimension-input"><input id="rear-toe-arm-main-arm-width" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
               <label class="dimension-field" for="rear-main-arm-length">
-                <span><strong>Rear Main Arm Length</strong><small>Outward from main arm inner mounts</small></span>
+                <span><strong>Rear Main Arm Length</strong><small>Fixed distance between main arm mounts</small></span>
                 <span class="dimension-input"><input id="rear-main-arm-length" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
               <label class="dimension-field" for="rear-toe-arm-length">
-                <span><strong>Rear Toe Arm Length</strong><small>Outward from toe arm inner mounts</small></span>
+                <span><strong>Rear Toe Arm Length</strong><small>Fixed distance between toe arm mounts</small></span>
                 <span class="dimension-input"><input id="rear-toe-arm-length" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
             </section>
@@ -292,8 +292,20 @@ app.innerHTML = `
                 <span><strong>Toe arm outer mount height</strong><small>Height above the ground plane</small></span>
                 <span class="dimension-input"><input id="rear-toe-arm-outer-mount-height" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
+              <label class="dimension-field" for="rear-toe-arm-outer-mount-height-offset">
+                <span><strong>Toe Arm Outer Mount Height Offset</strong><small>Vertical offset from the main arm outer mount</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-outer-mount-height-offset" type="number" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-toe-arm-outer-mount-forward-offset">
+                <span><strong>Toe Arm Outer Mount Forward Offset</strong><small>Forward offset from the main arm outer mount</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-outer-mount-forward-offset" type="number" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-toe-arm-outer-mount-lateral-offset">
+                <span><strong>Toe Arm Outer Mount Lateral Offset</strong><small>Inward offset from the main arm outer mount</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-outer-mount-lateral-offset" type="number" step="1" /> <small>mm</small></span>
+              </label>
               <label class="dimension-field" for="rear-trailing-arm-length">
-                <span><strong>Trailing Arm Length</strong><small>Length of the trailing arm</small></span>
+                <span><strong>Trailing Arm Length</strong><small>Longitudinal offset for the main arm outer mount</small></span>
                 <span class="dimension-input"><input id="rear-trailing-arm-length" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
               <label class="dimension-field" for="rear-trailing-arm-mount-height">
@@ -439,6 +451,12 @@ const rearToeArmOuterMountOffsetInput =
   document.querySelector<HTMLInputElement>("#rear-toe-arm-outer-mount-offset")!;
 const rearToeArmOuterMountHeightInput =
   document.querySelector<HTMLInputElement>("#rear-toe-arm-outer-mount-height")!;
+const rearToeArmOuterMountHeightOffsetInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-outer-mount-height-offset")!;
+const rearToeArmOuterMountForwardOffsetInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-outer-mount-forward-offset")!;
+const rearToeArmOuterMountLateralOffsetInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-outer-mount-lateral-offset")!;
 const rearTrailingArmLengthInput =
   document.querySelector<HTMLInputElement>("#rear-trailing-arm-length")!;
 const rearTrailingArmMountHeightInput =
@@ -539,6 +557,9 @@ function renderGeometry(): void {
     String(current.rearHub.mainArmOuterMountStaticHeightMm);
   rearToeArmOuterMountOffsetInput.value = String(current.rearHub.toeArmOuterMountOffsetMm);
   rearToeArmOuterMountHeightInput.value = String(current.rearHub.toeArmOuterMountHeightMm);
+  rearToeArmOuterMountHeightOffsetInput.value = String(current.rearHub.toeArmOuterMountHeightOffsetMm);
+  rearToeArmOuterMountForwardOffsetInput.value = String(current.rearHub.toeArmOuterMountForwardOffsetMm);
+  rearToeArmOuterMountLateralOffsetInput.value = String(current.rearHub.toeArmOuterMountLateralOffsetMm);
   rearTrailingArmLengthInput.value = String(current.rearHub.trailingArmLengthMm);
   rearTrailingArmMountHeightInput.value = String(current.rearHub.trailingArmMountHeightMm);
   rearTrailingArmMountWidthInput.value = String(current.rearHub.trailingArmMountWidthMm);
@@ -721,6 +742,12 @@ rearToeArmOuterMountOffsetInput.addEventListener("change", () =>
   updateRearHubDimension("toeArmOuterMountOffsetMm", rearToeArmOuterMountOffsetInput, "Toe arm outer mount offset"));
 rearToeArmOuterMountHeightInput.addEventListener("change", () =>
   updateRearHubDimension("toeArmOuterMountHeightMm", rearToeArmOuterMountHeightInput, "Toe arm outer mount height"));
+rearToeArmOuterMountHeightOffsetInput.addEventListener("change", () =>
+  updateRearHubDimension("toeArmOuterMountHeightOffsetMm", rearToeArmOuterMountHeightOffsetInput, "Toe Arm Outer Mount Height Offset"));
+rearToeArmOuterMountForwardOffsetInput.addEventListener("change", () =>
+  updateRearHubDimension("toeArmOuterMountForwardOffsetMm", rearToeArmOuterMountForwardOffsetInput, "Toe Arm Outer Mount Forward Offset"));
+rearToeArmOuterMountLateralOffsetInput.addEventListener("change", () =>
+  updateRearHubDimension("toeArmOuterMountLateralOffsetMm", rearToeArmOuterMountLateralOffsetInput, "Toe Arm Outer Mount Lateral Offset"));
 rearTrailingArmLengthInput.addEventListener("change", () =>
   updateRearHubDimension("trailingArmLengthMm", rearTrailingArmLengthInput, "Trailing Arm Length"));
 rearTrailingArmMountHeightInput.addEventListener("change", () =>
@@ -739,9 +766,11 @@ function updateRearHubDimension(
   input: HTMLInputElement,
   label: string,
 ): void {
-  const value = Number(input.value);
-  if (!Number.isFinite(value) || value <= 0) {
-    showNotice(`${label} must be a positive finite number.`, "error");
+  const value = input.valueAsNumber;
+  const isSignedOffset = key === "toeArmOuterMountHeightOffsetMm" ||
+    key === "toeArmOuterMountForwardOffsetMm" || key === "toeArmOuterMountLateralOffsetMm";
+  if (!Number.isFinite(value) || (!isSignedOffset && value <= 0)) {
+    showNotice(`${label} must be a ${isSignedOffset ? "" : "positive "}finite number.`, "error");
     renderGeometry();
     return;
   }

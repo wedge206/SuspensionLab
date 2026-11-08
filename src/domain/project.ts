@@ -1,5 +1,8 @@
 import type { SuspensionProject } from "./types";
-import { steeringRackTravelLimitMm } from "./coordinates";
+import {
+  rearArmAxisEnd, rearMainArmInnerMountPoints, rearMainArmOuterMountPoints,
+  rearTrailingArmMountPoints, rotatePointAroundAxis, steeringRackTravelLimitMm,
+} from "./coordinates";
 
 export function validateProject(value: unknown): SuspensionProject {
   if (!value || typeof value !== "object") {
@@ -104,6 +107,8 @@ export function validateProject(value: unknown): SuspensionProject {
   const rearRightRotationRad: unknown = rearSuspension.rightRotationRad === undefined
     ? 0
     : rearSuspension.rightRotationRad;
+  const leftVerticalOffsetValue: unknown = rearSuspension.leftVerticalOffsetMm;
+  const rightVerticalOffsetValue: unknown = rearSuspension.rightVerticalOffsetMm;
   const rearHub = project.rearHub && typeof project.rearHub === "object"
     ? project.rearHub as Record<string, unknown>
     : {};
@@ -117,6 +122,15 @@ export function validateProject(value: unknown): SuspensionProject {
   const toeArmOuterMountHeightMm: unknown = rearHub.toeArmOuterMountHeightMm === undefined
     ? 10
     : rearHub.toeArmOuterMountHeightMm;
+  const toeArmOuterMountHeightOffsetMm: unknown = rearHub.toeArmOuterMountHeightOffsetMm === undefined
+    ? 0
+    : rearHub.toeArmOuterMountHeightOffsetMm;
+  const toeArmOuterMountForwardOffsetMm: unknown = rearHub.toeArmOuterMountForwardOffsetMm === undefined
+    ? 200
+    : rearHub.toeArmOuterMountForwardOffsetMm;
+  const toeArmOuterMountLateralOffsetMm: unknown = rearHub.toeArmOuterMountLateralOffsetMm === undefined
+    ? 10
+    : rearHub.toeArmOuterMountLateralOffsetMm;
   const trailingArmLengthMm: unknown = rearHub.trailingArmLengthMm === undefined
     ? 355
     : rearHub.trailingArmLengthMm;
@@ -232,6 +246,15 @@ export function validateProject(value: unknown): SuspensionProject {
       !Number.isFinite(toeArmOuterMountHeightMm) || toeArmOuterMountHeightMm <= 0) {
     throw new Error("Toe arm outer mount height must be a positive finite value.");
   }
+  if (typeof toeArmOuterMountHeightOffsetMm !== "number" || !Number.isFinite(toeArmOuterMountHeightOffsetMm)) {
+    throw new Error("Toe arm outer mount height offset must be a finite value.");
+  }
+  if (typeof toeArmOuterMountForwardOffsetMm !== "number" || !Number.isFinite(toeArmOuterMountForwardOffsetMm)) {
+    throw new Error("Toe arm outer mount forward offset must be a finite value.");
+  }
+  if (typeof toeArmOuterMountLateralOffsetMm !== "number" || !Number.isFinite(toeArmOuterMountLateralOffsetMm)) {
+    throw new Error("Toe arm outer mount lateral offset must be a finite value.");
+  }
   if (typeof trailingArmLengthMm !== "number" ||
       !Number.isFinite(trailingArmLengthMm) || trailingArmLengthMm <= 0) {
     throw new Error("Trailing arm length must be a positive finite value.");
@@ -248,6 +271,22 @@ export function validateProject(value: unknown): SuspensionProject {
       !Number.isFinite(trailingArmMountForwardOffsetMm) || trailingArmMountForwardOffsetMm <= 0) {
     throw new Error("Trailing arm mount forward offset must be a positive finite value.");
   }
+  if ((leftVerticalOffsetValue !== undefined &&
+      (typeof leftVerticalOffsetValue !== "number" || !Number.isFinite(leftVerticalOffsetValue))) ||
+      (rightVerticalOffsetValue !== undefined &&
+      (typeof rightVerticalOffsetValue !== "number" || !Number.isFinite(rightVerticalOffsetValue)))) {
+    throw new Error("Rear arm vertical offsets must be finite values.");
+  }
+  const inner = rearMainArmInnerMountPoints(frontToRearLengthMm, mainArmInnerMountWidthMm, mainArmInnerMountHeightMm);
+  const trailing = rearTrailingArmMountPoints(inner, trailingArmMountWidthMm, trailingArmMountHeightMm, trailingArmMountForwardOffsetMm);
+  const neutral = rearMainArmOuterMountPoints(inner, trailing, mainArmLengthMm, trailingArmLengthMm, mainArmOuterMountStaticHeightMm);
+  const legacyHeightOffset = (side: 0 | 1, angle: number): number =>
+    rotatePointAroundAxis(neutral[side], inner[side], rearArmAxisEnd(inner[side], trailing[side], neutral[side]), angle)[2] -
+      mainArmOuterMountStaticHeightMm;
+  const leftVerticalOffsetMm = leftVerticalOffsetValue === undefined
+    ? legacyHeightOffset(0, rearLeftRotationRad) : Number(leftVerticalOffsetValue);
+  const rightVerticalOffsetMm = rightVerticalOffsetValue === undefined
+    ? legacyHeightOffset(1, rearRightRotationRad) : Number(rightVerticalOffsetValue);
   return {
     id: project.id,
     name: project.name,
@@ -304,11 +343,16 @@ export function validateProject(value: unknown): SuspensionProject {
       toeArmLengthMm,
       leftRotationRad: rearLeftRotationRad,
       rightRotationRad: rearRightRotationRad,
+      leftVerticalOffsetMm,
+      rightVerticalOffsetMm,
     },
     rearHub: {
       mainArmOuterMountStaticHeightMm,
       toeArmOuterMountOffsetMm,
       toeArmOuterMountHeightMm,
+      toeArmOuterMountHeightOffsetMm,
+      toeArmOuterMountForwardOffsetMm,
+      toeArmOuterMountLateralOffsetMm,
       trailingArmLengthMm,
       trailingArmMountHeightMm,
       trailingArmMountWidthMm,

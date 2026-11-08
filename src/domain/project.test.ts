@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createProjectFromTemplate } from "../templates/templates";
 import { validateProject } from "./project";
+import {
+  rearArmAxisEnd, rearMainArmInnerMountPoints, rearMainArmOuterMountPoints,
+  rearTrailingArmMountPoints, rotatePointAroundAxis,
+} from "./coordinates";
 
 describe("static strut length", () => {
   it("defaults older projects to 580 mm while retaining their saved arm positions", () => {
@@ -41,6 +45,8 @@ describe("rear suspension main arm inner mount height", () => {
       toeArmLengthMm: 225,
       leftRotationRad: 0,
       rightRotationRad: 0,
+      leftVerticalOffsetMm: 0,
+      rightVerticalOffsetMm: 0,
     });
 
   });
@@ -127,6 +133,38 @@ describe("rear suspension toe arm dimensions", () => {
         })).toThrow("Rear arm rotation angles must be finite values.");
       }
     });
+
+    it("migrates legacy rotations to independent saved vertical offsets", () => {
+      const value = project();
+      const { leftVerticalOffsetMm: _left, rightVerticalOffsetMm: _right, ...legacy } = value.rearSuspension;
+      legacy.leftRotationRad = 0.4;
+      legacy.rightRotationRad = -0.3;
+      const loaded = validateProject({ ...value, rearSuspension: legacy });
+      const inner = rearMainArmInnerMountPoints(legacy.frontToRearLengthMm, legacy.mainArmInnerMountWidthMm, legacy.mainArmInnerMountHeightMm);
+      const hub = value.rearHub;
+      const trailing = rearTrailingArmMountPoints(inner, hub.trailingArmMountWidthMm, hub.trailingArmMountHeightMm, hub.trailingArmMountForwardOffsetMm);
+      const neutral = rearMainArmOuterMountPoints(inner, trailing, legacy.mainArmLengthMm, hub.trailingArmLengthMm, hub.mainArmOuterMountStaticHeightMm);
+      for (const [side, angle, offset] of [
+        [0, legacy.leftRotationRad, loaded.rearSuspension.leftVerticalOffsetMm],
+        [1, legacy.rightRotationRad, loaded.rearSuspension.rightVerticalOffsetMm],
+      ] as const) {
+        const old = rotatePointAroundAxis(neutral[side], inner[side], rearArmAxisEnd(inner[side], trailing[side], neutral[side]), angle);
+        expect(offset).toBeCloseTo(old[2] - hub.mainArmOuterMountStaticHeightMm, 10);
+      }
+      loaded.rearSuspension.leftVerticalOffsetMm = -150;
+      loaded.rearSuspension.rightVerticalOffsetMm = 250;
+      expect(validateProject(JSON.parse(JSON.stringify(loaded))).rearSuspension)
+        .toMatchObject({ leftVerticalOffsetMm: -150, rightVerticalOffsetMm: 250 });
+    });
+
+    it.each(["leftVerticalOffsetMm", "rightVerticalOffsetMm"])("rejects invalid %s", (key) => {
+      const value = project();
+      for (const offset of [NaN, Infinity, null, "0"]) {
+        expect(() => validateProject({
+          ...value, rearSuspension: { ...value.rearSuspension, [key]: offset },
+        })).toThrow("Rear arm vertical offsets must be finite values.");
+      }
+    });
   });
 
   it.each(dimensions)("preserves valid $key", ({ key }) => {
@@ -183,6 +221,9 @@ describe("rear hub dimensions", () => {
       mainArmOuterMountStaticHeightMm: 240,
       toeArmOuterMountOffsetMm: 150,
       toeArmOuterMountHeightMm: 10,
+      toeArmOuterMountHeightOffsetMm: 0,
+      toeArmOuterMountForwardOffsetMm: 200,
+      toeArmOuterMountLateralOffsetMm: 10,
       trailingArmLengthMm: 355,
       trailingArmMountHeightMm: 308,
       trailingArmMountWidthMm: 1100,
@@ -215,5 +256,36 @@ describe("rear hub dimensions", () => {
         })).toThrow(`${label} must be a positive finite value.`);
       },
     );
+  }
+
+  const offsets = [
+    { key: "toeArmOuterMountHeightOffsetMm", label: "Toe arm outer mount height offset", defaultValue: 0 },
+    { key: "toeArmOuterMountForwardOffsetMm", label: "Toe arm outer mount forward offset", defaultValue: 200 },
+    { key: "toeArmOuterMountLateralOffsetMm", label: "Toe arm outer mount lateral offset", defaultValue: 10 },
+  ] as const;
+
+  it.each(offsets)("defaults missing $key without changing other values", ({ key, defaultValue }) => {
+    const value = project();
+    value.rearHub.toeArmOuterMountOffsetMm = 155;
+    const { [key]: _omitted, ...remaining } = value.rearHub;
+    expect(validateProject({ ...value, rearHub: remaining }).rearHub)
+      .toEqual({ ...remaining, [key]: defaultValue });
+  });
+
+  it.each(offsets)("preserves signed and zero values for $key", ({ key }) => {
+    for (const offset of [-25.5, 0, 42]) {
+      const value = project();
+      value.rearHub[key] = offset;
+      expect(validateProject(JSON.parse(JSON.stringify(value))).rearHub[key]).toBe(offset);
+    }
+  });
+
+  for (const { key, label } of offsets) {
+    it.each([NaN, Infinity, null, "10"])(`rejects invalid ${key}: %s`, (offset) => {
+      const value = project();
+      expect(() => validateProject({
+        ...value, rearHub: { ...value.rearHub, [key]: offset },
+      })).toThrow(`${label} must be a finite value.`);
+    });
   }
 });

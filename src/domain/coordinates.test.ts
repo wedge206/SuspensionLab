@@ -9,6 +9,8 @@ import {
   rearMainArmOuterMountPoints,
   rearTrailingArmMountPoints,
   rearToeArmInnerMountPoints,
+  rearToeArmOuterMountPoints,
+  solveRearArmMounts,
   steeringKnucklePivotPoints,
   steeringRackPivotPoints,
   steeringRackTravelLimitMm,
@@ -98,27 +100,83 @@ describe("front lower control arm pickup points", () => {
             .toEqual([[-1195, 700, 270], [-1195, -700, 270]]);
         });
 
-        it("moves each side independently while preserving both arm lengths", () => {
+        it("moves each side vertically and independently without an arm-length constraint", () => {
           const inner = rearMainArmInnerMountPoints(1900, 725, 250);
           const trailing = rearTrailingArmMountPoints(inner, 1100, 308, 290);
           const neutral = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240);
-          const moved = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240, 0.4, -0.3);
-          const leftOnly = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240, 0.4, 0);
-          const distance = (a: number[], b: number[]) =>
-            Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+          const moved = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240, 400, -300);
+          const leftOnly = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240, 400, 0);
           for (let side = 0; side < 2; side += 1) {
-            expect(moved[side][2]).not.toBeCloseTo(neutral[side][2]);
-            expect(distance(moved[side], inner[side])).toBeCloseTo(distance(neutral[side], inner[side]), 8);
-            expect(distance(moved[side], trailing[side])).toBeCloseTo(distance(neutral[side], trailing[side]), 8);
+            expect(moved[side][0]).toBe(neutral[side][0]);
+            expect(moved[side][1]).toBe(neutral[side][1]);
+            expect(moved[side][2] - neutral[side][2]).toBe(side === 0 ? 400 : -300);
           }
           expect(leftOnly[0]).toEqual(moved[0]);
           expect(leftOnly[1]).toEqual(neutral[1]);
         });
 
-        it("keeps coordinates finite when the two inner pivots coincide", () => {
+        it("positions mirrored toe arm outer mounts relative to each moving main arm outer mount", () => {
           const inner = rearMainArmInnerMountPoints(1900, 725, 250);
-          const moved = rearMainArmOuterMountPoints(inner, inner, 420, 355, 240, 0.4, -0.3);
-          for (const point of moved) expect(point.every(Number.isFinite)).toBe(true);
+          const trailing = rearTrailingArmMountPoints(inner, 1100, 308, 290);
+          const neutral = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240);
+          expect(rearToeArmOuterMountPoints(neutral, 0, 200, 10))
+            .toEqual([[-1115, 772.5, 240], [-1115, -772.5, 240]]);
+
+          const moved = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240, 40, -30);
+          const toe = rearToeArmOuterMountPoints(moved, -15, -20, -8);
+          for (let side = 0; side < 2; side += 1) {
+            expect(toe[side][0] - moved[side][0]).toBeCloseTo(-20);
+            expect(toe[side][1] - moved[side][1]).toBeCloseTo(side === 0 ? 8 : -8);
+            expect(toe[side][2] - moved[side][2]).toBeCloseTo(-15);
+          }
+        });
+
+        it("preserves configured main and toe arm lengths throughout vertical travel", () => {
+          const inner = rearMainArmInnerMountPoints(1900, 400, 250);
+          const toeInner = rearToeArmInnerMountPoints(inner, 685, 260, 201);
+          const trailing = rearTrailingArmMountPoints(inner, 1160, 308, 460);
+          const distance = (a: number[], b: number[]) =>
+            Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+          for (const [left, right] of [[0, 0], [40, -40], [80, -80]]) {
+            const nominal = rearMainArmOuterMountPoints(inner, trailing, 370, 455, 240, left, right);
+            const result = solveRearArmMounts(inner, toeInner, nominal, 370, 210, 0, 200, 10, 240);
+            const toeOuter = result.toeOuterMounts;
+            for (const side of [0, 1] as const) {
+              expect(distance(inner[side], result.mainOuterMounts[side])).toBeCloseTo(370, 8);
+              expect(distance(toeInner[side], toeOuter[side])).toBeCloseTo(210, 8);
+              expect(distance(result.mainOuterMounts[side], toeOuter[side])).toBeCloseTo(Math.hypot(200, 10), 8);
+              expect(result.mainOuterMounts[side][2]).toBeCloseTo(nominal[side][2], 8);
+            }
+          }
+        });
+
+        it("mirrors the static solution and moves only the requested side", () => {
+          const inner = rearMainArmInnerMountPoints(1900, 400, 250);
+          const toe = rearToeArmInnerMountPoints(inner, 685, 260, 201);
+          const trailing = rearTrailingArmMountPoints(inner, 1160, 308, 460);
+          const nominal = rearMainArmOuterMountPoints(inner, trailing, 370, 455, 240);
+          const staticPoints = solveRearArmMounts(inner, toe, nominal, 370, 210, 5, 200, 10, 240).mainOuterMounts;
+          const toePoints = solveRearArmMounts(inner, toe, nominal, 370, 210, 5, 200, 10, 240).toeOuterMounts;
+          expect(staticPoints[0][0]).toBeCloseTo(staticPoints[1][0], 8);
+          expect(staticPoints[0][1]).toBeCloseTo(-staticPoints[1][1], 8);
+          expect(toePoints[0][0] - staticPoints[0][0]).not.toBeCloseTo(200, 6);
+          expect(toePoints[0][2] - staticPoints[0][2]).toBeCloseTo(5, 8);
+          const movedNominal = rearMainArmOuterMountPoints(inner, trailing, 370, 455, 240, 40, 0);
+          const moved = solveRearArmMounts(inner, toe, movedNominal, 370, 210, 5, 200, 10, 240).mainOuterMounts;
+          expect(moved[1]).toEqual(staticPoints[1]);
+          expect(moved[0][2]).toBeCloseTo(staticPoints[0][2] + 40);
+          expect(moved[0][1]).not.toBeCloseTo(staticPoints[0][1], 6);
+        });
+
+        it("rejects impossible and indeterminate arm geometry", () => {
+          const inner = rearMainArmInnerMountPoints(1900, 400, 250);
+          const trailing = rearTrailingArmMountPoints(inner, 1160, 308, 460);
+          const nominal = rearMainArmOuterMountPoints(inner, trailing, 370, 455, 240);
+          const toe = rearToeArmInnerMountPoints(inner, 685, 260, 201);
+          expect(() => solveRearArmMounts(inner, toe, nominal, 10, 10, 0, 200, 10, 240))
+            .toThrow("Rear arm lengths cannot reach");
+          expect(() => solveRearArmMounts(inner, inner, nominal, 10, 10, 0, 0, 0, 240))
+            .toThrow("Rear arm lengths cannot reach");
         });
       });
 
@@ -628,11 +686,15 @@ describe("front lower control arm pickup points", () => {
         mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
         toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
         mainArmLengthMm: 420, toeArmLengthMm: 225, leftRotationRad: 0, rightRotationRad: 0,
+        leftVerticalOffsetMm: 0, rightVerticalOffsetMm: 0,
       },
       rearHub: {
         mainArmOuterMountStaticHeightMm: 240,
         toeArmOuterMountOffsetMm: 150,
         toeArmOuterMountHeightMm: 10,
+        toeArmOuterMountHeightOffsetMm: 0,
+        toeArmOuterMountForwardOffsetMm: 200,
+        toeArmOuterMountLateralOffsetMm: 10,
         trailingArmLengthMm: 355,
         trailingArmMountHeightMm: 308,
         trailingArmMountWidthMm: 1100,

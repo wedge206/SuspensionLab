@@ -5,11 +5,11 @@ import {
   controlArmPickupPoints,
   frontTopMountPoints,
   orientHubPoint,
-  rearArmAxisEnd,
   rearMainArmInnerMountPoints,
   rearMainArmOuterMountPoints,
   rearTrailingArmMountPoints,
   rearToeArmInnerMountPoints,
+  solveRearArmMounts,
   steeredHubFacePoints,
   steeringKnucklePivotPoints,
   steeringRackPivotPoints,
@@ -63,6 +63,8 @@ export class ChassisScene {
   private dragRotationRecoverySign = 0;
   private lastGeometryMessage = "";
   private dragStartY = 0;
+  private dragStartRearHeightOffsetMm = 0;
+  private rearVerticalPixelsPerMm = 1;
   private dragStartAngle = 0;
   private dragVerticalSign = 1;
   private dragChanged = false;
@@ -84,6 +86,10 @@ export class ChassisScene {
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
   ];
+  private readonly rearToeArmOuterMounts = [
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
+  ];
   private readonly rearTrailingArmMounts = [
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x7be0e6, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x7be0e6, roughness: 0.4 })),
@@ -92,7 +98,7 @@ export class ChassisScene {
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0x00ffff }),
   );
-  private readonly rearTrailingArms = new THREE.LineSegments(
+  private readonly rearOuterMountConnections = new THREE.LineSegments(
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0xffffff }),
   );
@@ -320,9 +326,10 @@ export class ChassisScene {
       ...this.rearMainArmInnerMounts,
       ...this.rearMainArmOuterMounts,
       ...this.rearToeArmInnerMounts,
+      ...this.rearToeArmOuterMounts,
       ...this.rearTrailingArmMounts,
       this.rearMainArms,
-      this.rearTrailingArms,
+      this.rearOuterMountConnections,
       this.rearToeArms,
       ...this.ballJoints,
       ...this.steeringRackPivots,
@@ -392,16 +399,15 @@ export class ChassisScene {
       project.rearHub.trailingArmMountForwardOffsetMm,
     );
     this.rearTrailingArmMounts.forEach((mount, index) => mount.position.set(...trailingArmMounts[index]));
-    const rearOuterMounts = rearMainArmOuterMountPoints(
+    const nominalOuterMounts = rearMainArmOuterMountPoints(
       rearMounts,
       trailingArmMounts,
       project.rearSuspension.mainArmLengthMm,
       project.rearHub.trailingArmLengthMm,
       project.rearHub.mainArmOuterMountStaticHeightMm,
-      project.rearSuspension.leftRotationRad,
-      project.rearSuspension.rightRotationRad,
+      project.rearSuspension.leftVerticalOffsetMm,
+      project.rearSuspension.rightVerticalOffsetMm,
     );
-    this.rearMainArmOuterMounts.forEach((mount, index) => mount.position.set(...rearOuterMounts[index]));
     const toeArmMounts = rearToeArmInnerMountPoints(
       rearMounts,
       project.rearSuspension.toeArmInnerMountWidthMm,
@@ -409,23 +415,39 @@ export class ChassisScene {
       project.rearSuspension.toeArmMainArmWidthMm,
     );
     this.rearToeArmInnerMounts.forEach((mount, index) => mount.position.set(...toeArmMounts[index]));
-    const outwardEndpoint = (point: Vec3, lengthMm: number): THREE.Vector3 =>
-      new THREE.Vector3(point[0], point[1] + Math.sign(point[1]) * lengthMm, point[2]);
-    this.rearMainArms.geometry.setFromPoints(rearMounts.flatMap((mount, index) => [
-      new THREE.Vector3(...mount),
-      new THREE.Vector3(...rearOuterMounts[index]),
-    ]));
-    this.rearMainArms.geometry.computeBoundingSphere();
-    this.rearTrailingArms.geometry.setFromPoints(trailingArmMounts.flatMap((mount, index) => [
-      new THREE.Vector3(...mount),
-      new THREE.Vector3(...rearOuterMounts[index]),
-    ]));
-    this.rearTrailingArms.geometry.computeBoundingSphere();
-    this.rearToeArms.geometry.setFromPoints(toeArmMounts.flatMap((mount) => [
-      new THREE.Vector3(...mount),
-      outwardEndpoint(mount, project.rearSuspension.toeArmLengthMm),
-    ]));
-    this.rearToeArms.geometry.computeBoundingSphere();
+    let rearGeometryMessage = "";
+    try {
+      const solution = solveRearArmMounts(
+        rearMounts, toeArmMounts, nominalOuterMounts,
+        project.rearSuspension.mainArmLengthMm, project.rearSuspension.toeArmLengthMm,
+        project.rearHub.toeArmOuterMountHeightOffsetMm,
+        project.rearHub.toeArmOuterMountForwardOffsetMm,
+        project.rearHub.toeArmOuterMountLateralOffsetMm,
+        project.rearHub.mainArmOuterMountStaticHeightMm,
+      );
+      const rearOuterMounts = solution.mainOuterMounts;
+      const toeArmOuterMounts = solution.toeOuterMounts;
+      this.rearMainArmOuterMounts.forEach((mount, index) => mount.position.set(...rearOuterMounts[index]));
+      this.rearToeArmOuterMounts.forEach((mount, index) => mount.position.set(...toeArmOuterMounts[index]));
+      this.rearMainArms.geometry.setFromPoints(rearMounts.flatMap((mount, index) => [
+        new THREE.Vector3(...mount), new THREE.Vector3(...rearOuterMounts[index]),
+      ]));
+      this.rearOuterMountConnections.geometry.setFromPoints(rearOuterMounts.flatMap((mount, index) => [
+        new THREE.Vector3(...mount), new THREE.Vector3(...toeArmOuterMounts[index]),
+      ]));
+      this.rearToeArms.geometry.setFromPoints(toeArmMounts.flatMap((mount, index) => [
+        new THREE.Vector3(...mount), new THREE.Vector3(...toeArmOuterMounts[index]),
+      ]));
+      for (const line of [this.rearMainArms, this.rearOuterMountConnections, this.rearToeArms]) {
+        line.geometry.computeBoundingSphere();
+      }
+      this.setRearArmVisibility(true);
+    } catch (error) {
+      if (!(error instanceof Error) ||
+          error.message !== "Rear arm lengths cannot reach both outer mounts with the current geometry.") throw error;
+      this.setRearArmVisibility(false);
+      rearGeometryMessage = error.message;
+    }
     points.ballJoint.forEach((point, index) => this.ballJoints[index].position.set(...point));
     const rackPivots = steeringRackPivotPoints(
       project.steeringRack.widthMm,
@@ -690,15 +712,14 @@ export class ChassisScene {
         outOfRangeSides.map(({ side, length }) => `${side} ${length.toFixed(1)} mm`).join(", ")
       }.`
       : "";
-    const geometryMessage = geometryError || strutWarning;
-    const geometryStatusKey = geometryError
-      ? "tie-rod-error"
-      : outOfRangeSides.map(({ side }) => side).join(",");
+    const geometryMessage = [rearGeometryMessage, geometryError, strutWarning].filter(Boolean).join(" ");
+    const geometryStatusKey = [rearGeometryMessage, geometryError, ...outOfRangeSides.map(({ side }) => side)]
+      .filter(Boolean).join("|");
     this.geometryStatus.textContent = geometryMessage;
     this.geometryStatus.hidden = !geometryMessage;
     if (geometryStatusKey !== this.lastGeometryMessage) {
       this.onGeometryError(
-        geometryMessage || "Strut lengths are within configured travel limits.",
+        geometryMessage || "Suspension geometry is valid.",
         geometryMessage ? "error" : "success",
       );
       this.lastGeometryMessage = geometryStatusKey;
@@ -780,6 +801,7 @@ export class ChassisScene {
       ...this.rearMainArmInnerMounts,
       ...this.rearMainArmOuterMounts,
       ...this.rearToeArmInnerMounts,
+      ...this.rearToeArmOuterMounts,
       ...this.rearTrailingArmMounts,
     ]) {
       pickup.geometry.dispose();
@@ -830,8 +852,8 @@ export class ChassisScene {
     this.controlArmFirstSides.material.dispose();
     this.rearMainArms.geometry.dispose();
     this.rearMainArms.material.dispose();
-    this.rearTrailingArms.geometry.dispose();
-    this.rearTrailingArms.material.dispose();
+    this.rearOuterMountConnections.geometry.dispose();
+    this.rearOuterMountConnections.material.dispose();
     this.rearToeArms.geometry.dispose();
     this.rearToeArms.material.dispose();
     this.steeringRack.geometry.dispose();
@@ -862,36 +884,32 @@ export class ChassisScene {
     this.strutMountAngleMarkers.visible = visible;
   }
 
+  private setRearArmVisibility(visible: boolean): void {
+    for (const object of [
+      ...this.rearMainArmOuterMounts, ...this.rearToeArmOuterMounts,
+      this.rearMainArms, this.rearOuterMountConnections, this.rearToeArms,
+    ]) object.visible = visible;
+  }
+
   private handlePointerDown(event: PointerEvent): void {
     const index = this.intersectBallJoint(event);
     if (!this.project) return;
     if (index === null) {
       const rearIndex = this.intersectRearOuterMount(event);
       if (rearIndex !== null) {
-        const main = this.rearMainArmInnerMounts[rearIndex].position;
-        const trailing = this.rearTrailingArmMounts[rearIndex].position;
         const outer = this.rearMainArmOuterMounts[rearIndex].position;
-        const axisEnd = rearArmAxisEnd(main.toArray(), trailing.toArray(), outer.toArray());
-        const axis = new THREE.Vector3(...axisEnd).sub(main).normalize();
-        const radial = outer.clone().sub(main);
-        const tangent = axis.clone().cross(radial);
-        const verticalAmplitude = Math.hypot(tangent.z, radial.z - axis.z * radial.dot(axis));
-        if (verticalAmplitude < 1e-6) {
-          this.onGeometryError("Rear arm pivots do not allow vertical movement of this mount.");
-          return;
-        }
         event.preventDefault();
         event.stopImmediatePropagation();
         this.draggingRearOuterMountIndex = rearIndex;
         this.setHoveredRearOuterMount(rearIndex);
         this.dragStartY = event.clientY;
         this.dragChanged = false;
-        this.dragStartAngle = rearIndex === 0
-          ? this.project.rearSuspension.leftRotationRad
-          : this.project.rearSuspension.rightRotationRad;
-        this.dragVerticalSign = Math.abs(tangent.z) > 1e-6
-          ? Math.sign(tangent.z)
-          : rearIndex === 0 ? 1 : -1;
+        this.dragStartRearHeightOffsetMm = outer.z - this.project.rearHub.mainArmOuterMountStaticHeightMm;
+        const bounds = this.renderer.domElement.getBoundingClientRect();
+        const start = outer.clone().project(this.camera);
+        const end = outer.clone().add(new THREE.Vector3(0, 0, 1)).project(this.camera);
+        const pixelsPerMm = Math.abs(end.y - start.y) * bounds.height / 2;
+        this.rearVerticalPixelsPerMm = pixelsPerMm > 0.01 ? pixelsPerMm : 1;
         this.controls.enabled = false;
         this.renderer.domElement.style.cursor = "grabbing";
         this.renderer.domElement.setPointerCapture(event.pointerId);
@@ -950,17 +968,36 @@ export class ChassisScene {
       event.preventDefault();
       event.stopImmediatePropagation();
       const index = this.draggingRearOuterMountIndex;
-      const target = this.dragStartAngle + (this.dragStartY - event.clientY) * 0.01 * this.dragVerticalSign;
-      const angle = Math.max(
-        Math.min(-MAX_CONTROL_ARM_DRAG_ANGLE_RAD, this.dragStartAngle),
-        Math.min(Math.max(MAX_CONTROL_ARM_DRAG_ANGLE_RAD, this.dragStartAngle), target),
-      );
+      const requested = this.dragStartRearHeightOffsetMm +
+        (this.dragStartY - event.clientY) / this.rearVerticalPixelsPerMm;
       const current = index === 0
-        ? this.project.rearSuspension.leftRotationRad
-        : this.project.rearSuspension.rightRotationRad;
-      if (Math.abs(angle - current) > 1e-10) this.dragChanged = true;
-      if (index === 0) this.project.rearSuspension.leftRotationRad = angle;
-      else this.project.rearSuspension.rightRotationRad = angle;
+        ? this.project.rearSuspension.leftVerticalOffsetMm
+        : this.project.rearSuspension.rightVerticalOffsetMm;
+      const innerHeight = this.project.rearSuspension.mainArmInnerMountHeightMm;
+      const staticHeight = this.project.rearHub.mainArmOuterMountStaticHeightMm;
+      const length = this.project.rearSuspension.mainArmLengthMm;
+      const target = Math.max(innerHeight - length - staticHeight, Math.min(innerHeight + length - staticHeight, requested));
+      let offset = current;
+      const steps = Math.min(2048, Math.max(1, Math.ceil(Math.abs(target - current) / 5)));
+      for (let step = 1; step <= steps; step += 1) {
+        const candidate = current + (target - current) * step / steps;
+        if (this.rearHeightReachable(index, candidate)) {
+          offset = candidate;
+        } else {
+          let valid = offset;
+          let invalid = candidate;
+          for (let iteration = 0; iteration < 30; iteration += 1) {
+            const middle = (valid + invalid) / 2;
+            if (this.rearHeightReachable(index, middle)) valid = middle;
+            else invalid = middle;
+          }
+          offset = valid;
+          break;
+        }
+      }
+      if (Math.abs(offset - current) > 1e-10) this.dragChanged = true;
+      if (index === 0) this.project.rearSuspension.leftVerticalOffsetMm = offset;
+      else this.project.rearSuspension.rightVerticalOffsetMm = offset;
       this.update(this.project);
       return;
     }
@@ -1101,6 +1138,7 @@ export class ChassisScene {
   }
 
   private intersectRearOuterMount(event: PointerEvent): number | null {
+    if (!this.rearMainArmOuterMounts[0].visible) return null;
     const bounds = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(
       ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
@@ -1111,6 +1149,42 @@ export class ChassisScene {
     if (!hit) return null;
     const index = this.rearMainArmOuterMounts.findIndex((mount) => mount.uuid === hit.object.uuid);
     return index < 0 ? null : index;
+  }
+
+  private rearHeightReachable(index: number, offset: number): boolean {
+    if (!this.project) return false;
+    const project = this.project;
+    const inner = rearMainArmInnerMountPoints(
+      project.rearSuspension.frontToRearLengthMm,
+      project.rearSuspension.mainArmInnerMountWidthMm,
+      project.rearSuspension.mainArmInnerMountHeightMm,
+    );
+    const toe = rearToeArmInnerMountPoints(
+      inner, project.rearSuspension.toeArmInnerMountWidthMm,
+      project.rearSuspension.toeArmInnerMountHeightMm, project.rearSuspension.toeArmMainArmWidthMm,
+    );
+    const trailing = rearTrailingArmMountPoints(
+      inner, project.rearHub.trailingArmMountWidthMm,
+      project.rearHub.trailingArmMountHeightMm, project.rearHub.trailingArmMountForwardOffsetMm,
+    );
+    const nominal = rearMainArmOuterMountPoints(
+      inner, trailing, project.rearSuspension.mainArmLengthMm,
+      project.rearHub.trailingArmLengthMm, project.rearHub.mainArmOuterMountStaticHeightMm,
+      index === 0 ? offset : project.rearSuspension.leftVerticalOffsetMm,
+      index === 1 ? offset : project.rearSuspension.rightVerticalOffsetMm,
+    );
+    try {
+      solveRearArmMounts(
+        inner, toe, nominal, project.rearSuspension.mainArmLengthMm, project.rearSuspension.toeArmLengthMm,
+        project.rearHub.toeArmOuterMountHeightOffsetMm, project.rearHub.toeArmOuterMountForwardOffsetMm,
+        project.rearHub.toeArmOuterMountLateralOffsetMm, project.rearHub.mainArmOuterMountStaticHeightMm,
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof Error &&
+          error.message === "Rear arm lengths cannot reach both outer mounts with the current geometry.") return false;
+      throw error;
+    }
   }
 
   private intersectSteeringRackPivot(event: PointerEvent): number | null {

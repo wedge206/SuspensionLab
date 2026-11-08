@@ -90,17 +90,86 @@ export function rearMainArmOuterMountPoints(
   mainArmLengthMm: number,
   trailingArmLengthMm: number,
   staticHeightMm: number,
-  leftRotationRad = 0,
-  rightRotationRad = 0,
+  leftVerticalOffsetMm = 0,
+  rightVerticalOffsetMm = 0,
 ): [Vec3, Vec3] {
-  const neutral: [Vec3, Vec3] = [
-    [trailingArmMounts[0][0] - trailingArmLengthMm, mainArmMounts[0][1] + mainArmLengthMm, staticHeightMm],
-    [trailingArmMounts[1][0] - trailingArmLengthMm, mainArmMounts[1][1] - mainArmLengthMm, staticHeightMm],
-  ];
   return [
-    rotatePointAroundAxis(neutral[0], mainArmMounts[0], rearArmAxisEnd(mainArmMounts[0], trailingArmMounts[0], neutral[0]), leftRotationRad),
-    rotatePointAroundAxis(neutral[1], mainArmMounts[1], rearArmAxisEnd(mainArmMounts[1], trailingArmMounts[1], neutral[1]), rightRotationRad),
+    [trailingArmMounts[0][0] - trailingArmLengthMm, mainArmMounts[0][1] + mainArmLengthMm, staticHeightMm + leftVerticalOffsetMm],
+    [trailingArmMounts[1][0] - trailingArmLengthMm, mainArmMounts[1][1] - mainArmLengthMm, staticHeightMm + rightVerticalOffsetMm],
   ];
+}
+
+export function rearToeArmOuterMountPoints(
+  mainArmOuterMounts: [Vec3, Vec3],
+  heightOffsetMm: number,
+  forwardOffsetMm: number,
+  lateralOffsetMm: number,
+): [Vec3, Vec3] {
+  return [
+    [mainArmOuterMounts[0][0] + forwardOffsetMm, mainArmOuterMounts[0][1] - lateralOffsetMm, mainArmOuterMounts[0][2] + heightOffsetMm],
+    [mainArmOuterMounts[1][0] + forwardOffsetMm, mainArmOuterMounts[1][1] + lateralOffsetMm, mainArmOuterMounts[1][2] + heightOffsetMm],
+  ];
+}
+
+export interface RearArmSolution {
+  mainOuterMounts: [Vec3, Vec3];
+  toeOuterMounts: [Vec3, Vec3];
+}
+
+export function solveRearArmMounts(
+  mainMounts: [Vec3, Vec3],
+  toeMounts: [Vec3, Vec3],
+  nominalOuterMounts: [Vec3, Vec3],
+  mainLengthMm: number,
+  toeLengthMm: number,
+  heightOffsetMm: number,
+  forwardOffsetMm: number,
+  lateralOffsetMm: number,
+  staticHeightMm: number,
+): RearArmSolution {
+  const mainPoints: Vec3[] = [];
+  const toePoints: Vec3[] = [];
+  for (const side of [0, 1] as const) {
+    const main = mainMounts[side];
+    const toe = toeMounts[side];
+    const nominal = nominalOuterMounts[side];
+    const deltaX = nominal[0] - main[0];
+    const deltaZ = nominal[2] - main[2];
+    const lateralSquared = mainLengthMm ** 2 - deltaX ** 2 - deltaZ ** 2;
+    const toeHeight = nominal[2] + heightOffsetMm;
+    const toeHorizontalSquared = toeLengthMm ** 2 - (toeHeight - toe[2]) ** 2;
+    if (lateralSquared < -1e-8 || toeHorizontalSquared < -1e-8) {
+      throw new Error("Rear arm lengths cannot reach both outer mounts with the current geometry.");
+    }
+    const mainOuter: Vec3 = [
+      nominal[0], main[1] + (side === 0 ? 1 : -1) * Math.sqrt(Math.max(0, lateralSquared)), nominal[2],
+    ];
+    const dx = toe[0] - mainOuter[0];
+    const dy = toe[1] - mainOuter[1];
+    const distance = Math.hypot(dx, dy);
+    const hubRadius = Math.hypot(forwardOffsetMm, lateralOffsetMm);
+    const toeRadius = Math.sqrt(Math.max(0, toeHorizontalSquared));
+    if (distance < 1e-9 || distance > hubRadius + toeRadius + 1e-9 ||
+        distance < Math.abs(hubRadius - toeRadius) - 1e-9) {
+      throw new Error("Rear arm lengths cannot reach both outer mounts with the current geometry.");
+    }
+    const along = (hubRadius ** 2 - toeRadius ** 2 + distance ** 2) / (2 * distance);
+    const across = Math.sqrt(Math.max(0, hubRadius ** 2 - along ** 2));
+    const ux = dx / distance;
+    const uy = dy / distance;
+    const nominalY = side === 0 ? -lateralOffsetMm : lateralOffsetMm;
+    const referenceLateral = Math.sqrt(Math.max(0, mainLengthMm ** 2 - deltaX ** 2 - (staticHeightMm - main[2]) ** 2));
+    const referenceDy = toe[1] - main[1] - (side === 0 ? 1 : -1) * referenceLateral;
+    const sideOfCenterLine = -forwardOffsetMm * referenceDy + nominalY * dx;
+    const sign = sideOfCenterLine === 0 ? (side === 0 ? 1 : -1) : Math.sign(sideOfCenterLine);
+    mainPoints.push(mainOuter);
+    toePoints.push([
+      mainOuter[0] + along * ux - sign * across * uy,
+      mainOuter[1] + along * uy + sign * across * ux,
+      toeHeight,
+    ]);
+  }
+  return { mainOuterMounts: [mainPoints[0], mainPoints[1]], toeOuterMounts: [toePoints[0], toePoints[1]] };
 }
 
 export function rearArmAxisEnd(mainMount: Vec3, trailingMount: Vec3, outerMount: Vec3): Vec3 {

@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vitest";
 import {createProjectFromTemplate, DEFAULT_TEMPLATE_KEY} from "../templates/templates";
 import {solveSuspension} from "./kinematics";
+import {STRUT_TRAVEL_TOLERANCE_MM} from "./strutTravel";
 import {
     acceptedFrontAngle, acceptedRearOffset, clampRackTravel, frontConstraintViolation, rearHeightReachable,
 } from "./dragConstraints";
@@ -62,6 +63,28 @@ describe("solved suspension snapshot", () => {
         expect(result.geometryStatusKey).toBe("left|right");
         expect(result.alignment).not.toBeNull();
     });
+
+    it.each(["min", "max"] as const)("tolerates tiny deviations at the strut %s limit", (limit) => {
+        const value = project();
+        const length = solveSuspension(value).knucklePoints.strutLengths[0];
+        const direction = limit === "min" ? 1 : -1;
+        const setLimit = (offset: number) => {
+            if (limit === "min") value.wheelKnuckle.strutMinLengthMm = length + offset;
+            else value.wheelKnuckle.strutMaxLengthMm = length + offset;
+        };
+        for (const offset of [0, direction * STRUT_TRAVEL_TOLERANCE_MM / 2]) {
+            setLimit(offset);
+            const result = solveSuspension(value);
+            expect(result.strutOutOfRange).toEqual([false, false]);
+            expect(result.geometryMessage).not.toContain("Strut length outside configured");
+            expect(result.geometryStatusKey).toBe("");
+        }
+        setLimit(direction * STRUT_TRAVEL_TOLERANCE_MM * 2);
+        const result = solveSuspension(value);
+        expect(result.strutOutOfRange).toEqual([true, true]);
+        expect(result.geometryMessage).toContain("Strut length outside configured");
+        expect(result.geometryStatusKey).toBe("left|right");
+    });
 });
 
 describe("drag constraints", () => {
@@ -105,5 +128,44 @@ describe("drag constraints", () => {
         const accepted = acceptedFrontAngle(value, 0, -2, 2, initial, 1);
         expect(accepted).toBeGreaterThanOrEqual(-Math.PI / 2 - 1e-8);
         expect(accepted).toBeLessThan(2);
+    });
+
+    it.each([[0, -1], [0, 1], [1, -1], [1, 1]] as const)(
+        "does not accumulate travel tolerance across repeated drags on side %i toward %i", (side, direction) => {
+            const value = project();
+            let accepted = side === 0 ? value.frontControlArm.leftRotationRad : value.frontControlArm.rightRotationRad;
+            const target = accepted + direction * 1e-5;
+            const initialLength = solveSuspension(value).knucklePoints.strutLengths[side];
+            const moved = structuredClone(value);
+            if (side === 0) moved.frontControlArm.leftRotationRad = target;
+            else moved.frontControlArm.rightRotationRad = target;
+            const targetLength = solveSuspension(moved).knucklePoints.strutLengths[side];
+            if (targetLength < initialLength) value.wheelKnuckle.strutMinLengthMm = initialLength;
+            else value.wheelKnuckle.strutMaxLengthMm = initialLength;
+            let baseline = frontConstraintViolation(value, side, accepted);
+            for (let i = 0; i < 50; i += 1) {
+                accepted = acceptedFrontAngle(value, side, target, accepted, baseline, 0);
+                if (side === 0) value.frontControlArm.leftRotationRad = accepted;
+                else value.frontControlArm.rightRotationRad = accepted;
+                baseline = frontConstraintViolation(value, side, accepted);
+                expect(baseline[1]).toBeLessThanOrEqual(STRUT_TRAVEL_TOLERANCE_MM);
+                expect(solveSuspension(value).strutOutOfRange).toEqual([false, false]);
+            }
+            expect(Math.abs(accepted - target)).toBeGreaterThan(1e-6);
+            expect(baseline[1]).toBeGreaterThan(0);
+        });
+
+    it("allows recovery from strut travel violations without increasing them", () => {
+        const value = project();
+        value.wheelKnuckle.strutMinLengthMm = 590;
+        const initial = value.frontControlArm.leftRotationRad;
+        const baseline = frontConstraintViolation(value, 0, initial);
+        const direction = frontConstraintViolation(value, 0, initial + 1e-4)[1] < baseline[1] ? 1 : -1;
+        const improving = initial + direction * 1e-4;
+        const worsening = initial - direction * 1e-4;
+        expect(acceptedFrontAngle(value, 0, improving, initial, baseline, 0)).toBe(improving);
+        const accepted = acceptedFrontAngle(value, 0, worsening, initial, baseline, 0);
+        expect(frontConstraintViolation(value, 0, accepted)[1]).toBeLessThanOrEqual(baseline[1]);
+        expect(accepted).not.toBe(worsening);
     });
 });

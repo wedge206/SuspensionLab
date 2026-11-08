@@ -4,6 +4,7 @@ import {
     steeringRackTravelLimitMm, tieRodConstrainedKnucklePoints,
 } from "./coordinates";
 import {FRONT_GEOMETRY_ERROR_CODES, isGeometryError, REAR_GEOMETRY_ERROR_CODES} from "./geometryError";
+import {STRUT_TRAVEL_TOLERANCE_MM, strutTravelViolation} from "./strutTravel";
 import type {SuspensionProject} from "./types";
 
 export const MAX_CONTROL_ARM_DRAG_ANGLE_RAD = Math.PI / 2;
@@ -32,8 +33,7 @@ export function frontConstraintViolation(project: SuspensionProject, index: 0 | 
             -knuckle.strutMountAngleDeg, rack.tieRodLengthMm, knuckle.strutMinLengthMm, knuckle.strutMaxLengthMm,
         );
         const travelViolation = solved.strutLengths.reduce((violation, length) =>
-            violation + Math.max(0, knuckle.strutMinLengthMm - length) +
-            Math.max(0, length - knuckle.strutMaxLengthMm), 0);
+            violation + strutTravelViolation(length, knuckle.strutMinLengthMm, knuckle.strutMaxLengthMm), 0);
         return [rotationViolation, travelViolation];
     } catch (error) {
         if (isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) {
@@ -51,7 +51,8 @@ export function acceptedFrontAngle(
         if (recoverySign !== 0 && Math.abs(angle) > MAX_CONTROL_ARM_DRAG_ANGLE_RAD &&
             Math.sign(angle) !== recoverySign) return false;
         const candidate = frontConstraintViolation(project, index, angle);
-        return candidate[0] <= baseline[0] + 1e-8 && candidate[1] <= baseline[1] + 1e-8;
+        return candidate[0] <= baseline[0] + 1e-8 &&
+            candidate[1] <= Math.max(baseline[1], STRUT_TRAVEL_TOLERANCE_MM);
     };
     if (allowed(target)) return target;
     const angleDelta = target - accepted;

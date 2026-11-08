@@ -7,6 +7,7 @@ import {
     wheelAlignmentMeasurements,
 } from "./coordinates";
 import {FRONT_GEOMETRY_ERROR_CODES, isGeometryError, REAR_GEOMETRY_ERROR_CODES} from "./geometryError";
+import {STRUT_TRAVEL_TOLERANCE_MM, strutTravelViolation} from "./strutTravel";
 import type {SuspensionProject, Vec3} from "./types";
 
 export function calculateGroundStations(project: SuspensionProject) {
@@ -127,8 +128,8 @@ export function solveSuspension(project: SuspensionProject) {
             return orientHubPoint(point, points.ballJoint[side], knucklePoints.orientations[side]);
         });
     const strutOutOfRange: [boolean, boolean] = [
-        knucklePoints.strutLengths[0] < knuckle.strutMinLengthMm || knucklePoints.strutLengths[0] > knuckle.strutMaxLengthMm,
-        knucklePoints.strutLengths[1] < knuckle.strutMinLengthMm || knucklePoints.strutLengths[1] > knuckle.strutMaxLengthMm,
+        strutTravelViolation(knucklePoints.strutLengths[0], knuckle.strutMinLengthMm, knuckle.strutMaxLengthMm) > STRUT_TRAVEL_TOLERANCE_MM,
+        strutTravelViolation(knucklePoints.strutLengths[1], knuckle.strutMinLengthMm, knuckle.strutMaxLengthMm) > STRUT_TRAVEL_TOLERANCE_MM,
     ];
     const outOfRangeSides = knucklePoints.strutLengths
         .map((length, index) => ({length, side: index === 0 ? "left" : "right"}))

@@ -568,6 +568,40 @@ export const projectFields = {
         rightVerticalOffsetMm: {constraint: "finite"},
     },
     rearHub: {
+        camberArmOuterMountHeightMm: {constraint: "positive",
+            ui: {
+                id: "rear-camber-arm-outer-mount-height",
+                group: "rear-1",
+                order: 55,
+                label: "Camber Arm Outer Mount Height",
+                hint: "Height above the main arm outer mount",
+                unit: "mm",
+                min: "1",
+                step: "1"
+            }
+        },
+        camberArmOuterMountForwardOffsetMm: {constraint: "finite",
+            ui: {
+                id: "rear-camber-arm-outer-mount-forward-offset",
+                group: "rear-1",
+                order: 56,
+                label: "Camber Arm Outer Mount Forward Offset",
+                hint: "Forward offset from the main arm outer mount",
+                unit: "mm",
+                step: "1"
+            }
+        },
+        camberArmOuterMountLateralOffsetMm: {constraint: "finite",
+            ui: {
+                id: "rear-camber-arm-outer-mount-lateral-offset",
+                group: "rear-1",
+                order: 57,
+                label: "Camber Arm Outer Mount Lateral Offset",
+                hint: "Inward offset from the main arm outer mount (negative is outward)",
+                unit: "mm",
+                step: "1"
+            }
+        },
         mainArmOuterMountStaticHeightMm: {constraint: "positive",
             ui: {
                 id: "rear-main-arm-outer-mount-static-height",

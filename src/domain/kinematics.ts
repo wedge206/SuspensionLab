@@ -1,5 +1,5 @@
 import {
-    controlArmPickupPoints, frontTopMountPoints, orientHubPoint, rearCamberArmInnerMountPoints,
+    controlArmPickupPoints, frontTopMountPoints, orientHubPoint, rearArmOuterMountPoints, rearCamberArmInnerMountPoints,
     rearMainArmInnerMountPoints, rearMainArmOuterMountPoints, rearToeArmInnerMountPoints,
     rearTrailingArmMountPoints, solveRearArmMounts, steeredHubFacePoints, steeringKnucklePivotPoints,
     steeringRackPivotPoints, strutMountAngleSegments, strutMountPoints, suspensionMotionRatios,
@@ -66,6 +66,10 @@ export function solveSuspension(project: SuspensionProject) {
         if (!isGeometryError(error, REAR_GEOMETRY_ERROR_CODES)) throw error;
         rearGeometryMessage = error.message;
     }
+    const camberArmOuterMounts = rearSolution && rearArmOuterMountPoints(
+        rearSolution.mainOuterMounts, hub.camberArmOuterMountHeightMm,
+        hub.camberArmOuterMountForwardOffsetMm, hub.camberArmOuterMountLateralOffsetMm,
+    );
     const rackPivots = steeringRackPivotPoints(
         rack.widthMm, rack.centerlineHeightMm, rack.centerlineOffsetMm, rack.rackTravelMm,
     );
@@ -143,7 +147,7 @@ export function solveSuspension(project: SuspensionProject) {
     const geometryStatusKey = [rearGeometryMessage, geometryError, ...outOfRangeSides.map(({side}) => side)]
         .filter(Boolean).join("|");
     return {
-        ground, points, rearMounts, toeArmMounts, camberArmMounts, trailingArmMounts, rearSolution,
+        ground, points, rearMounts, toeArmMounts, camberArmMounts, camberArmOuterMounts, trailingArmMounts, rearSolution,
         rackPivots, topMounts, knucklePoints, knuckleValid, hubFaces, trueHubFaces, tireCenters, tireDiameterMm,
         tireWidthMm: tire.tireSectionWidthMm, groundAxisPoints, alignment, angleMarkers,
         strutOutOfRange,

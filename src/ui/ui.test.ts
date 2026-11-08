@@ -201,6 +201,20 @@ describe("UI bindings", () => {
         expect(persist).toHaveBeenCalledOnce();
     });
 
+    it("accepts inward and outward camber outer lateral offsets", () => {
+        const state = makeState();
+        const persist = vi.fn(() => true);
+        bindInputs(state, getUiElements(), renderers, persist);
+        const input = getNode("#rear-camber-arm-outer-mount-lateral-offset");
+        for (const value of [-30, 30]) {
+            input.value = String(value);
+            input.dispatchEvent(new Event("change"));
+            expect(state.current.rearHub.camberArmOuterMountLateralOffsetMm).toBe(value);
+        }
+        expect(persist).toHaveBeenCalledTimes(2);
+        expect(renderers.showNotice).not.toHaveBeenCalled();
+    });
+
     it("selects the current project and reports save failures", () => {
         const state = makeState();
         const second = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "Second", "second");

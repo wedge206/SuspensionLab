@@ -270,6 +270,16 @@ export class SceneGeometryBuilder {
             roughness: 0.4
         })),
     ];
+    readonly rearCamberArmOuterMounts = [
+        new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({
+            color: 0xc98ce8,
+            roughness: 0.4
+        })),
+        new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({
+            color: 0xc98ce8,
+            roughness: 0.4
+        })),
+    ];
     readonly rearMainArmOuterMounts = [
         new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({
             color: 0x00ffff,
@@ -501,7 +511,8 @@ export class SceneGeometryBuilder {
         scene.add(
             this.controlArmFirstSides, this.steeringRack, this.steeringRackExtensions, this.tieRods,
             ...this.struts, this.strutMountAngleMarkers, ...this.pickups, ...this.rearMainArmInnerMounts,
-            ...this.rearCamberArmInnerMounts, ...this.rearMainArmOuterMounts, ...this.rearToeArmInnerMounts,
+            ...this.rearCamberArmInnerMounts, ...this.rearCamberArmOuterMounts,
+            ...this.rearMainArmOuterMounts, ...this.rearToeArmInnerMounts,
             ...this.rearToeArmOuterMounts, ...this.rearTrailingArmMounts, this.rearMainArms,
             this.rearOuterMountConnections, this.rearToeArms, ...this.ballJoints, ...this.steeringRackPivots,
             ...this.topMountPoints, ...this.steeringPivots, ...this.hubFaces, this.hubFaceExtensions,
@@ -519,7 +530,7 @@ export class SceneGeometryBuilder {
 
     update(snapshot: SuspensionSnapshot): void {
         const {
-            ground, points, rearMounts, camberArmMounts, trailingArmMounts, toeArmMounts,
+            ground, points, rearMounts, camberArmMounts, camberArmOuterMounts, trailingArmMounts, toeArmMounts,
             rearSolution, rackPivots, topMounts, knucklePoints, knuckleValid,
             hubFaces, trueHubFaces, tireCenters, tireDiameterMm, tireWidthMm, groundAxisPoints,
             alignment, angleMarkers, strutOutOfRange,
@@ -532,10 +543,11 @@ export class SceneGeometryBuilder {
         this.rearTrailingArmMounts.forEach((mount, index) => mount.position.set(...trailingArmMounts[index]));
         this.updateGroundGrid(this.grid, this.compass, this.rearMarker, rearMounts[0][0]);
         this.rearToeArmInnerMounts.forEach((mount, index) => mount.position.set(...toeArmMounts[index]));
-        if (rearSolution) {
+        if (rearSolution && camberArmOuterMounts) {
             const rearOuterMounts = rearSolution.mainOuterMounts;
             const toeArmOuterMounts = rearSolution.toeOuterMounts;
             this.rearMainArmOuterMounts.forEach((mount, index) => mount.position.set(...rearOuterMounts[index]));
+            this.rearCamberArmOuterMounts.forEach((mount, index) => mount.position.set(...camberArmOuterMounts[index]));
             this.rearToeArmOuterMounts.forEach((mount, index) => mount.position.set(...toeArmOuterMounts[index]));
             this.rearMainArms.geometry.setFromPoints(rearMounts.flatMap((mount, index) => [
                 new THREE.Vector3(...mount), new THREE.Vector3(...rearOuterMounts[index]),
@@ -764,7 +776,7 @@ export class SceneGeometryBuilder {
 
     setRearArmVisibility(visible: boolean): void {
         for (const object of [
-            ...this.rearMainArmOuterMounts, ...this.rearToeArmOuterMounts,
+            ...this.rearMainArmOuterMounts, ...this.rearCamberArmOuterMounts, ...this.rearToeArmOuterMounts,
             this.rearMainArms, this.rearOuterMountConnections, this.rearToeArms,
         ]) object.visible = visible;
     }
@@ -775,6 +787,7 @@ export class SceneGeometryBuilder {
             ...this.pickups,
             ...this.rearMainArmInnerMounts,
             ...this.rearCamberArmInnerMounts,
+            ...this.rearCamberArmOuterMounts,
             ...this.rearMainArmOuterMounts,
             ...this.rearToeArmInnerMounts,
             ...this.rearToeArmOuterMounts,

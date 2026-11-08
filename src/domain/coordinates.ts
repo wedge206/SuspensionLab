@@ -113,7 +113,7 @@ export function rearMainArmOuterMountPoints(
     ];
 }
 
-export function rearToeArmOuterMountPoints(
+export function rearArmOuterMountPoints(
     mainArmOuterMounts: [Vec3, Vec3],
     heightOffsetMm: number,
     forwardOffsetMm: number,
@@ -124,6 +124,8 @@ export function rearToeArmOuterMountPoints(
         [mainArmOuterMounts[1][0] + forwardOffsetMm, mainArmOuterMounts[1][1] + lateralOffsetMm, mainArmOuterMounts[1][2] + heightOffsetMm],
     ];
 }
+
+export {rearArmOuterMountPoints as rearToeArmOuterMountPoints};
 
 export interface RearArmSolution {
     mainOuterMounts: [Vec3, Vec3];

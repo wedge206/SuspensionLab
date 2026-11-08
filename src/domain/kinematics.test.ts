@@ -27,6 +27,31 @@ describe("solved suspension snapshot", () => {
         expect(result.geometryMessage).toBe("");
     });
 
+    it("positions camber outer mounts relative to the solved main mounts as each side moves", () => {
+        const value = project();
+        const baseline = solveSuspension(value);
+        value.rearSuspension.leftVerticalOffsetMm = 40;
+        value.rearHub.camberArmOuterMountHeightMm = 110;
+        value.rearHub.camberArmOuterMountForwardOffsetMm = -25;
+        for (const lateral of [0, 30, -30]) {
+            value.rearHub.camberArmOuterMountLateralOffsetMm = lateral;
+            const result = solveSuspension(value);
+            expect(result.rearSolution).not.toBeNull();
+            expect(result.camberArmOuterMounts).not.toBeNull();
+            for (const side of [0, 1] as const) {
+                const main = result.rearSolution!.mainOuterMounts[side];
+                const camber = result.camberArmOuterMounts![side];
+                expect(camber[0] - main[0]).toBeCloseTo(-25);
+                expect(camber[1] - main[1]).toBeCloseTo(side === 0 ? -lateral : lateral);
+                expect(camber[2] - main[2]).toBeCloseTo(110);
+            }
+            expect(result.rearSolution!.mainOuterMounts[0][2] - baseline.rearSolution!.mainOuterMounts[0][2]).toBeCloseTo(40);
+            expect(result.rearSolution!.mainOuterMounts[1]).toEqual(baseline.rearSolution!.mainOuterMounts[1]);
+        }
+        value.rearSuspension.mainArmLengthMm = 1;
+        expect(solveSuspension(value).camberArmOuterMounts).toBeNull();
+    });
+
     it("preserves independent front and rear failure states and warning keys", () => {
         const value = project();
         value.rearSuspension.mainArmLengthMm = 1;

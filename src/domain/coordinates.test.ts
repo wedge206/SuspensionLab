@@ -705,6 +705,9 @@ describe("front lower control arm pickup points", () => {
                 leftVerticalOffsetMm: 0, rightVerticalOffsetMm: 0,
             },
             rearHub: {
+                camberArmOuterMountHeightMm: 97,
+                camberArmOuterMountForwardOffsetMm: 189,
+                camberArmOuterMountLateralOffsetMm: 0,
                 mainArmOuterMountStaticHeightMm: 240,
                 toeArmOuterMountOffsetMm: 150,
                 toeArmOuterMountHeightMm: 10,

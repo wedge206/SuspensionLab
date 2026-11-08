@@ -144,6 +144,12 @@ select {
     font-size: 12px;
 }
 
+.topbar-actions select {
+    height: 35px;
+    padding: 0 10px;
+    font-size: 12px;
+}
+
 .template-dialog {
     width: min(380px, calc(100vw - 32px));
     padding: 22px;

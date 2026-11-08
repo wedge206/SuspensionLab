@@ -8,6 +8,7 @@ import {bindInputs} from "./inputs";
 import {renderAlignmentPanel, renderPage, renderSidebar, renderToolbar} from "./page";
 import {bindProjectManager, loadProjectState} from "./projectManager";
 import {createUiRenderers} from "./renderers";
+import {bindTheme, THEME_STORAGE_KEY} from "./toolbar";
 
 class FakeElement extends EventTarget {
     value = "";
@@ -47,6 +48,14 @@ describe("UI composition", () => {
         for (const id of ["project-select", "template-dialog", "tab-front", "tab-rear", "viewport", "show-scrub-geometry", "toe-total", "notice"]) {
             expect(page.match(new RegExp(`id="${id}"`, "g"))).toHaveLength(1);
         }
+    });
+
+    it("places the theme selector immediately before Reset", () => {
+        const toolbar = renderToolbar();
+        expect(toolbar).toContain('<label class="sr-only" for="theme-select">Color theme</label>');
+        expect(toolbar).toContain('<option value="dark">Dark</option>');
+        expect(toolbar).toContain('<option value="light">Light</option>');
+        expect(toolbar.indexOf('id="theme-select"')).toBeLessThan(toolbar.indexOf('id="reset-project"'));
     });
 
     it("renders every registered control once with its label, hint and numeric attributes", () => {
@@ -104,6 +113,66 @@ describe("UI bindings", () => {
             initialNotice: "",
         };
     }
+
+    it.each([null, "dark", "", "invalid"])("defaults to dark for stored theme %s", (savedTheme) => {
+        const select = getNode("#theme-select");
+        const lightTheme = {disabled: false};
+        const getItem = vi.fn(() => savedTheme);
+        vi.stubGlobal("localStorage", {getItem, setItem: vi.fn()});
+        expect(bindTheme(select, lightTheme, vi.fn())).toBe("");
+        expect(select.value).toBe("dark");
+        expect(lightTheme.disabled).toBe(true);
+        expect(getItem).toHaveBeenCalledWith(THEME_STORAGE_KEY);
+    });
+
+    it("restores and persists theme selections across page loads", () => {
+        const storage = new Map<string, string>();
+        vi.stubGlobal("localStorage", {
+            getItem: (key: string) => storage.get(key) ?? null,
+            setItem: (key: string, value: string) => storage.set(key, value),
+        });
+        const select = getNode("#theme-select");
+        const lightTheme = {disabled: true};
+        const onError = vi.fn();
+        bindTheme(select, lightTheme, onError);
+        select.value = "light";
+        select.dispatchEvent(new Event("change"));
+        expect(lightTheme.disabled).toBe(false);
+        expect(storage.get(THEME_STORAGE_KEY)).toBe("light");
+
+        const reloadedSelect = new FakeElement();
+        const reloadedTheme = {disabled: true};
+        bindTheme(reloadedSelect, reloadedTheme, onError);
+        expect(reloadedSelect.value).toBe("light");
+        expect(reloadedTheme.disabled).toBe(false);
+
+        reloadedSelect.value = "dark";
+        reloadedSelect.dispatchEvent(new Event("change"));
+        expect(reloadedTheme.disabled).toBe(true);
+        expect(storage.get(THEME_STORAGE_KEY)).toBe("dark");
+        const nextSelect = new FakeElement();
+        bindTheme(nextSelect, reloadedTheme, onError);
+        expect(nextSelect.value).toBe("dark");
+        expect(reloadedTheme.disabled).toBe(true);
+        expect(onError).not.toHaveBeenCalled();
+    });
+
+    it("reports storage failures while keeping theme switching usable", () => {
+        const select = getNode("#theme-select");
+        const lightTheme = {disabled: false};
+        const onError = vi.fn();
+        vi.stubGlobal("localStorage", {
+            getItem: () => { throw new Error("storage unavailable"); },
+            setItem: () => { throw new Error("storage unavailable"); },
+        });
+        expect(bindTheme(select, lightTheme, onError)).toBe("Could not load the saved theme; using Dark.");
+        expect(select.value).toBe("dark");
+        expect(lightTheme.disabled).toBe(true);
+        select.value = "light";
+        select.dispatchEvent(new Event("change"));
+        expect(lightTheme.disabled).toBe(false);
+        expect(onError).toHaveBeenCalledWith("Could not save the selected theme.");
+    });
 
     it("rejects invalid input without persisting and restores the displayed value", () => {
         const state = makeState();

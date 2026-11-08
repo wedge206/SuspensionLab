@@ -1,3 +1,34 @@
+export const THEME_STORAGE_KEY = "suspension-lab.theme.v1";
+
+export function bindTheme(
+    select: Pick<HTMLSelectElement, "value" | "addEventListener">,
+    lightTheme: Pick<HTMLLinkElement, "disabled">,
+    onError: (message: string) => void,
+): string {
+    let savedTheme: string | null = null;
+    let loadError = "";
+    try {
+        savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    } catch {
+        loadError = "Could not load the saved theme; using Dark.";
+    }
+    select.value = savedTheme === "light" ? "light" : "dark";
+    lightTheme.disabled = select.value !== "light";
+    select.addEventListener("change", () => {
+        if (select.value !== "light" && select.value !== "dark") {
+            onError("Invalid theme selection.");
+            return;
+        }
+        lightTheme.disabled = select.value !== "light";
+        try {
+            localStorage.setItem(THEME_STORAGE_KEY, select.value);
+        } catch {
+            onError("Could not save the selected theme.");
+        }
+    });
+    return loadError;
+}
+
 export function renderToolbar(): string {
     return `
   <header class="topbar">
@@ -11,6 +42,11 @@ export function renderToolbar(): string {
       <button class="button button-quiet" id="delete-project">Delete</button>
     </div>
     <div class="topbar-actions">
+      <label class="sr-only" for="theme-select">Color theme</label>
+      <select id="theme-select" aria-label="Color theme">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+      </select>
       <button class="button button-quiet" id="reset-project" title="Reset to the template, preserving Strut Static Length">Reset</button>
       <button class="button button-quiet" id="import-project">Import JSON</button>
       <button class="button button-primary" id="export-project">Export JSON</button>

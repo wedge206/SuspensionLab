@@ -20,7 +20,7 @@ npm test
 npm run build
 ```
 
-The generated `dist` directory can be deployed to any static web host. Projects are kept in the current browser's local storage. Use **Export JSON** and **Import JSON** to move project files between browsers.
+The generated `dist` directory can be deployed to any static web host. Projects and the selected light or dark theme are kept in the current browser's local storage. Use **Export JSON** and **Import JSON** to move project files between browsers.
 
 The application entry point in `src/main.ts` composes the UI and lazily loads the viewer. Page sections, input bindings, project management, and UI updates live in `src/ui`. The `ChassisScene` facade in `src/viewer` delegates rendering, geometry, and pointer interactions to separate components. Pure calculations in `src/domain/kinematics.ts` produce a solved suspension snapshot for the viewer; `src/domain/dragConstraints.ts` handles physical drag limits independently of pointer and camera behavior.
 

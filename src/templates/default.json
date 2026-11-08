@@ -81,11 +81,11 @@
     "toeArmOuterMountHeightOffsetMm": 0,
     "toeArmOuterMountForwardOffsetMm": 200,
     "toeArmOuterMountLateralOffsetMm": 10,
-    "trailingArmLengthMm": 470,
+    "trailingArmLengthMm": 260,
     "trailingArmMountHeightMm": 308,
     "trailingArmMountWidthMm": 1040,
     "trailingArmMountForwardOffsetMm": 460,
     "trailingArmLateralOffsetMm": 0,
-    "trailingArmHeightMm": 10
+    "trailingArmHeightMm": 42
   }
 }

@@ -691,7 +691,7 @@ export const projectFields = {
                 group: "rear-2",
                 order: 51,
                 label: "Trailing Arm Length",
-                hint: "Sets the static main arm outer mount reference",
+                hint: "Forward extension from the hub (also sets its static reference)",
                 unit: "mm",
                 min: "1",
                 step: "1"
@@ -739,7 +739,7 @@ export const projectFields = {
                 group: "rear-2",
                 order: 55,
                 label: "Trailing Arm Lateral Offset",
-                hint: "Signed lateral offset",
+                hint: "Inward offset from the toe outer mount (negative is outward)",
                 unit: "mm",
                 step: "1"
             }
@@ -750,7 +750,7 @@ export const projectFields = {
                 group: "rear-2",
                 order: 56,
                 label: "Trailing Arm Height",
-                hint: "Signed vertical offset",
+                hint: "Vertical offset from the toe outer mount",
                 unit: "mm",
                 step: "1"
             }

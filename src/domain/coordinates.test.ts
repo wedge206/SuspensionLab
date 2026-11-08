@@ -10,6 +10,7 @@ import {
     rearMainArmInnerMountPoints,
     rearMainArmOuterMountPoints,
     rearTrailingArmMountPoints,
+    rearTrailingArmPoints,
     rearToeArmInnerMountPoints,
     rearToeArmOuterMountPoints,
     solveRearArmMounts,
@@ -28,8 +29,21 @@ import {
     wheelAlignmentMeasurements,
 } from "./coordinates";
 import type {SuspensionProject} from "./types";
+import type {Vec3} from "./types";
 
 describe("front lower control arm pickup points", () => {
+    it("places trailing arms in hub coordinates and mirrors signed lateral offsets", () => {
+        const solution = {
+            mainOuterMounts: [[0, 100, 0], [0, -100, 0]] as [Vec3, Vec3],
+            toeOuterMounts: [[200, 100, 0], [200, -100, 0]] as [Vec3, Vec3],
+        };
+        for (const [height, lateral] of [[10, 25], [-15, -20]]) {
+            const arms = rearTrailingArmPoints(solution, [{yawRad: 0, tiltRad: 0}, {yawRad: 0, tiltRad: 0}], height, lateral, 470);
+            expect(arms[0]).toEqual([[200, 100, 0], [200, 100 - lateral, height], [670, 100 - lateral, height]]);
+            expect(arms[1]).toEqual([[200, -100, 0], [200, -100 + lateral, height], [670, -100 + lateral, height]]);
+        }
+    });
+
     it("rotates the camber outer mounts with the solved toe direction on each side", () => {
         const camber = rearCamberArmOuterMountPoints({
             mainOuterMounts: [[10, 100, 200], [20, -100, 250]],

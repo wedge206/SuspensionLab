@@ -82,19 +82,26 @@ describe("viewer kinematics behavior", () => {
         const faceMaterialDispose = vi.spyOn(builder.rearHubFaces.material, "dispose");
         const armGeometryDispose = vi.spyOn(builder.rearCamberArms.geometry, "dispose");
         const armMaterialDispose = vi.spyOn(builder.rearCamberArms.material, "dispose");
+        const trailingGeometryDispose = vi.spyOn(builder.rearTrailingArms.geometry, "dispose");
+        const trailingMaterialDispose = vi.spyOn(builder.rearTrailingArms.material, "dispose");
         expect(scene.children).toContain(builder.rearHubFaces);
         expect(scene.children).toContain(builder.rearCamberArms);
+        expect(scene.children).toContain(builder.rearTrailingArms);
         for (const travel of [0, 20, -20]) {
             project.rearSuspension.leftVerticalOffsetMm = travel;
-            builder.update(solveSuspension(project));
+            const snapshot = solveSuspension(project);
+            builder.update(snapshot);
             const edges = builder.rearOuterMountConnections.geometry.getAttribute("position");
             const faces = builder.rearHubFaces.geometry.getAttribute("position");
             const arms = builder.rearCamberArms.geometry.getAttribute("position");
+            const trailing = builder.rearTrailingArms.geometry.getAttribute("position");
             expect(edges.count).toBe(12);
             expect(faces.count).toBe(6);
             expect(arms.count).toBe(4);
+            expect(trailing.count).toBe(8);
             expect(builder.rearHubFaces.visible).toBe(true);
             expect(builder.rearCamberArms.visible).toBe(true);
+            expect(builder.rearTrailingArms.visible).toBe(true);
             for (const side of [0, 1] as const) {
                 const main = builder.rearMainArmOuterMounts[side];
                 const toe = builder.rearToeArmOuterMounts[side];
@@ -110,6 +117,12 @@ describe("viewer kinematics behavior", () => {
                     }
                 }
                 const vertices = [main.position, toe.position, camber.position];
+                const [trailingToe, trailingStart, trailingEnd] = snapshot.trailingArms![side];
+                for (const [index, vertex] of [trailingToe, trailingStart, trailingStart, trailingEnd].entries()) {
+                    for (const [axis, get] of [[0, "getX"], [1, "getY"], [2, "getZ"]] as const) {
+                        expect(trailing[get](side * 4 + index)).toBeCloseTo(vertex[axis], 3);
+                    }
+                }
                 for (const [index, vertex] of vertices.entries()) {
                     for (const [axis, get] of [["x", "getX"], ["y", "getY"], ["z", "getZ"]] as const) {
                         expect(faces[get](side * 3 + index)).toBeCloseTo(vertex[axis], 3);
@@ -128,12 +141,14 @@ describe("viewer kinematics behavior", () => {
         expect(builder.rearHubFaces.visible).toBe(false);
         expect(builder.rearOuterMountConnections.visible).toBe(false);
         expect(builder.rearCamberArms.visible).toBe(false);
+        expect(builder.rearTrailingArms.visible).toBe(false);
         project.rearSuspension.mainArmLengthMm = 370;
         builder.update(solveSuspension(project));
         expect(builder.rearCamberArmOuterMounts.every((mount) => mount.visible)).toBe(true);
         expect(builder.rearHubFaces.visible).toBe(true);
         expect(builder.rearOuterMountConnections.visible).toBe(true);
         expect(builder.rearCamberArms.visible).toBe(true);
+        expect(builder.rearTrailingArms.visible).toBe(true);
         builder.dispose();
         expect(geometryDispose).toHaveBeenCalledOnce();
         expect(materialDispose).toHaveBeenCalledOnce();
@@ -141,5 +156,7 @@ describe("viewer kinematics behavior", () => {
         expect(faceMaterialDispose).toHaveBeenCalledOnce();
         expect(armGeometryDispose).toHaveBeenCalledOnce();
         expect(armMaterialDispose).toHaveBeenCalledOnce();
+        expect(trailingGeometryDispose).toHaveBeenCalledOnce();
+        expect(trailingMaterialDispose).toHaveBeenCalledOnce();
     });
 });

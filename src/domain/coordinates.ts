@@ -132,6 +132,14 @@ export interface RearArmSolution {
     toeOuterMounts: [Vec3, Vec3];
 }
 
+function rearHubYaw(solution: RearArmSolution, side: 0 | 1, forwardOffsetMm: number, lateralOffsetMm: number): number {
+    const main = solution.mainOuterMounts[side];
+    const toe = solution.toeOuterMounts[side];
+    const neutralY = side === 0 ? -lateralOffsetMm : lateralOffsetMm;
+    return forwardOffsetMm === 0 && lateralOffsetMm === 0 ? 0
+        : Math.atan2(toe[1] - main[1], toe[0] - main[0]) - Math.atan2(neutralY, forwardOffsetMm);
+}
+
 export function rearCamberArmOuterMountPoints(
     solution: RearArmSolution,
     toeForwardOffsetMm: number,
@@ -142,11 +150,8 @@ export function rearCamberArmOuterMountPoints(
 ): [Vec3, Vec3] {
     const points = ([0, 1] as const).map((side): Vec3 => {
         const main = solution.mainOuterMounts[side];
-        const toe = solution.toeOuterMounts[side];
-        const toeNeutralY = side === 0 ? -toeLateralOffsetMm : toeLateralOffsetMm;
         // Coincident main and toe pivots do not define a hub heading.
-        const yaw = toeForwardOffsetMm === 0 && toeLateralOffsetMm === 0 ? 0
-            : Math.atan2(toe[1] - main[1], toe[0] - main[0]) - Math.atan2(toeNeutralY, toeForwardOffsetMm);
+        const yaw = rearHubYaw(solution, side, toeForwardOffsetMm, toeLateralOffsetMm);
         const cos = Math.cos(yaw);
         const sin = Math.sin(yaw);
         const camberY = side === 0 ? -camberLateralOffsetMm : camberLateralOffsetMm;
@@ -230,6 +235,34 @@ export interface RearCamberArmParameters {
     lateralOffsetMm: number;
 }
 
+export interface RearHubOrientation {
+    yawRad: number;
+    tiltRad: number;
+}
+
+export function rearTrailingArmPoints(
+    solution: RearArmSolution,
+    orientations: [RearHubOrientation, RearHubOrientation],
+    heightMm: number,
+    lateralOffsetMm: number,
+    lengthMm: number,
+): [[Vec3, Vec3, Vec3], [Vec3, Vec3, Vec3]] {
+    const points = ([0, 1] as const).map((side): [Vec3, Vec3, Vec3] => {
+        const toe = solution.toeOuterMounts[side];
+        const main = solution.mainOuterMounts[side];
+        const {yawRad, tiltRad} = orientations[side];
+        const lateral = side === 0 ? -lateralOffsetMm : lateralOffsetMm;
+        const cos = Math.cos(yawRad);
+        const sin = Math.sin(yawRad);
+        const transform = (forward: number): Vec3 => rotatePointAroundAxis(
+            [toe[0] + cos * forward - sin * lateral, toe[1] + sin * forward + cos * lateral, toe[2] + heightMm],
+            main, toe, tiltRad,
+        );
+        return [toe, transform(0), transform(lengthMm)];
+    });
+    return [points[0], points[1]];
+}
+
 export function solveRearHubMounts(
     mainMounts: [Vec3, Vec3],
     toeMounts: [Vec3, Vec3],
@@ -242,7 +275,7 @@ export function solveRearHubMounts(
     staticHeightMm: number,
     camber: RearCamberArmParameters,
     longitudinalOffsets: [number, number] = [0, 0],
-): RearArmSolution & {camberOuterMounts: [Vec3, Vec3]} {
+): RearArmSolution & {camberOuterMounts: [Vec3, Vec3]; orientations: [RearHubOrientation, RearHubOrientation]} {
     const solveBase = (nominal: [Vec3, Vec3]) => solveRearArmMounts(
         mainMounts, toeMounts, nominal, mainLengthMm, toeLengthMm,
         heightOffsetMm, forwardOffsetMm, lateralOffsetMm, staticHeightMm, longitudinalOffsets,
@@ -301,7 +334,7 @@ export function solveRearHubMounts(
 
     const neutral = neutralCamber(solution);
     const staticNeutral = staticSolution && neutralCamber(staticSolution);
-    const points = ([0, 1] as const).map((side): Vec3 => {
+    const points = ([0, 1] as const).map((side): {point: Vec3; orientation: RearHubOrientation} => {
         const current = solveSide(solution, neutral, side);
         let reference = current;
         if (staticSolution && staticNeutral) {
@@ -314,13 +347,19 @@ export function solveRearHubMounts(
         const normalized = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
         const branch = Math.abs(normalized(reference.angles[0])) <= Math.abs(normalized(reference.angles[1])) ? 0 : 1;
         const angle = current.angles[branch];
-        return [
-            current.center[0] + current.radial[0] * Math.cos(angle) + current.tangent[0] * Math.sin(angle),
-            current.center[1] + current.radial[1] * Math.cos(angle) + current.tangent[1] * Math.sin(angle),
-            current.center[2] + current.radial[2] * Math.cos(angle) + current.tangent[2] * Math.sin(angle),
-        ];
+        return {
+            point: [
+                current.center[0] + current.radial[0] * Math.cos(angle) + current.tangent[0] * Math.sin(angle),
+                current.center[1] + current.radial[1] * Math.cos(angle) + current.tangent[1] * Math.sin(angle),
+                current.center[2] + current.radial[2] * Math.cos(angle) + current.tangent[2] * Math.sin(angle),
+            ],
+            orientation: {yawRad: rearHubYaw(solution, side, forwardOffsetMm, lateralOffsetMm), tiltRad: angle},
+        };
     });
-    return {...solution, camberOuterMounts: [points[0], points[1]]};
+    return {
+        ...solution, camberOuterMounts: [points[0].point, points[1].point],
+        orientations: [points[0].orientation, points[1].orientation],
+    };
 }
 
 export function rearArmAxisEnd(mainMount: Vec3, trailingMount: Vec3, outerMount: Vec3): Vec3 {

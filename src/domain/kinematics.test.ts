@@ -14,6 +14,43 @@ function project() {
 }
 
 describe("solved suspension snapshot", () => {
+    it.each([[10, 25], [-15, -20]])("keeps trailing arms fixed to each hub with offsets %i and %i", (height, lateral) => {
+        const value = project();
+        value.rearHub.trailingArmHeightMm = height;
+        value.rearHub.trailingArmLateralOffsetMm = lateral;
+        const distance = (a: number[], b: number[]) =>
+            Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        const reference = solveSuspension(value);
+        expect(reference.trailingArms).not.toBeNull();
+        const referenceDistances = ([0, 1] as const).map((side) =>
+            [reference.rearSolution!.mainOuterMounts[side], reference.rearSolution!.toeOuterMounts[side],
+                reference.camberArmOuterMounts![side]].flatMap((point) =>
+                reference.trailingArms![side].slice(1).map((armPoint) => distance(point, armPoint))));
+        for (const [longitudinal, vertical] of [[-25, -20], [0, 0], [30, 20]]) {
+            value.rearSuspension.leftLongitudinalOffsetMm = longitudinal;
+            value.rearSuspension.leftVerticalOffsetMm = vertical;
+            const result = solveSuspension(value);
+            expect(result.trailingArms).not.toBeNull();
+            for (const side of [0, 1] as const) {
+                const [toe, start, end] = result.trailingArms![side];
+                expect(toe).toEqual(result.rearSolution!.toeOuterMounts[side]);
+                expect(distance(toe, start)).toBeCloseTo(Math.hypot(height, lateral), 8);
+                expect(distance(start, end)).toBeCloseTo(value.rearHub.trailingArmLengthMm, 8);
+                const vertices = [result.rearSolution!.mainOuterMounts[side], toe, result.camberArmOuterMounts![side]];
+                const distances = vertices.flatMap((point) => [distance(point, start), distance(point, end)]);
+                distances.forEach((value, index) => expect(value).toBeCloseTo(referenceDistances[side][index], 7));
+            }
+        }
+        const before = solveSuspension(value);
+        value.rearHub.trailingArmHeightMm += 100;
+        value.rearHub.trailingArmLateralOffsetMm -= 100;
+        const after = solveSuspension(value);
+        expect(after.rearSolution).toEqual(before.rearSolution);
+        expect(after.trailingArms).not.toEqual(before.trailingArms);
+        value.rearSuspension.mainArmLengthMm = 1;
+        expect(solveSuspension(value).trailingArms).toBeNull();
+    });
+
     it("calculates mirrored positions, alignment and ground geometry without mutating the project", () => {
         const value = project();
         const before = structuredClone(value);

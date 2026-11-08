@@ -17,7 +17,7 @@ describe("project template assignments", () => {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => storage.set(key, value),
     });
-    storage.set(PROJECTS_KEY, JSON.stringify([createProjectFromTemplate("default", "project-id")]));
+    storage.set(PROJECTS_KEY, JSON.stringify([createProjectFromTemplate("default", "Project", "project-id")]));
 
     expect(loadProjects().templateKeys).toEqual({ "project-id": "default" });
   });
@@ -27,7 +27,7 @@ describe("project template assignments", () => {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => storage.set(key, value),
     });
-    const project = createProjectFromTemplate("default", "project-id");
+    const project = createProjectFromTemplate("default", "Project", "project-id");
 
     saveProjects([project], { "project-id": "default" });
 

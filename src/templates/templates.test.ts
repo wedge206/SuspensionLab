@@ -9,9 +9,9 @@ import {
 describe("built-in project templates", () => {
   it("loads the default template as the current project format", () => {
     expect(listProjectTemplates()).toContainEqual({ key: DEFAULT_TEMPLATE_KEY, name: "Default" });
-    expect(createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "new-id")).toEqual({
+    expect(createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "New project", "new-id")).toEqual({
       id: "new-id",
-      name: "Default",
+      name: "New project",
       frontLowerControlArmPickup: {
         widthMm: 465,
         rearWidthMm: 465,
@@ -60,7 +60,7 @@ describe("built-in project templates", () => {
   });
 
   it("resets a project to its template while preserving its id and name", () => {
-    const project = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "existing-id");
+    const project = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "Default", "existing-id");
     project.name = "Renamed";
     project.frontLowerControlArmPickup.widthMm = 700;
 

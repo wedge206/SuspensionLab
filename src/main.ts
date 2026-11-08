@@ -30,7 +30,7 @@ try {
     }
   }
   if (!projects.length) {
-    current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY);
+    current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "New suspension project");
     projects = [current];
     projectTemplateKeys[current.id] = DEFAULT_TEMPLATE_KEY;
     saveProjects(projects, projectTemplateKeys);
@@ -38,7 +38,7 @@ try {
     current = projects[0];
   }
 } catch (error) {
-  current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY);
+  current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "New suspension project");
   projects = [current];
   projectTemplateKeys[current.id] = DEFAULT_TEMPLATE_KEY;
   initialNotice = error instanceof Error ? error.message : "Could not load saved projects.";
@@ -67,9 +67,11 @@ app.innerHTML = `
       <h2 id="template-heading">New project</h2>
       <label for="template-select">Choose a template</label>
       <select id="template-select"></select>
+      <label for="project-name">Project name</label>
+      <input id="project-name" type="text" autocomplete="off" />
       <div class="template-dialog-actions">
         <button class="button button-quiet" id="cancel-template" type="button">Cancel</button>
-        <button class="button button-primary" type="submit">Create project</button>
+        <button class="button button-primary" id="create-project" type="submit" disabled>Create project</button>
       </div>
     </form>
   </dialog>
@@ -300,6 +302,8 @@ const projectSelect = document.querySelector<HTMLSelectElement>("#project-select
 const notice = document.querySelector<HTMLDivElement>("#notice")!;
 const templateDialog = document.querySelector<HTMLDialogElement>("#template-dialog")!;
 const templateSelect = document.querySelector<HTMLSelectElement>("#template-select")!;
+const projectNameInput = document.querySelector<HTMLInputElement>("#project-name")!;
+const createProjectButton = document.querySelector<HTMLButtonElement>("#create-project")!;
 for (const template of listProjectTemplates()) {
   const option = document.createElement("option");
   option.value = template.key;
@@ -307,6 +311,9 @@ for (const template of listProjectTemplates()) {
   templateSelect.append(option);
 }
 templateSelect.value = DEFAULT_TEMPLATE_KEY;
+projectNameInput.addEventListener("input", () => {
+  createProjectButton.disabled = (projectNameInput.value.match(/\S/g)?.length ?? 0) < 2;
+});
 const toeTotalOutput = document.querySelector<HTMLElement>("#toe-total")!;
 const toeSidesOutput = document.querySelector<HTMLElement>("#toe-sides")!;
 const camberOutput = document.querySelector<HTMLElement>("#camber-values")!;
@@ -752,7 +759,10 @@ function updateWheelTireDimension(
 }
 
 document.querySelector<HTMLButtonElement>("#new-project")!.addEventListener("click", () => {
+  projectNameInput.value = "";
+  createProjectButton.disabled = true;
   templateDialog.showModal();
+  projectNameInput.focus();
 });
 
 document.querySelector<HTMLButtonElement>("#cancel-template")!.addEventListener("click", () => {
@@ -762,8 +772,14 @@ document.querySelector<HTMLButtonElement>("#cancel-template")!.addEventListener(
 document.querySelector<HTMLFormElement>("#template-form")!.addEventListener("submit", (event) => {
   event.preventDefault();
   const templateKey = templateSelect.value;
+  const projectName = projectNameInput.value.trim();
+  if ((projectName.match(/\S/g)?.length ?? 0) < 2) {
+    createProjectButton.disabled = true;
+    projectNameInput.focus();
+    return;
+  }
   try {
-    current = createProjectFromTemplate(templateKey);
+    current = createProjectFromTemplate(templateKey, projectName);
     projects.push(current);
     projectTemplateKeys[current.id] = templateKey;
     renderProjectSelect();

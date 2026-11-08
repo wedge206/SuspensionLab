@@ -40,10 +40,11 @@ function getProjectTemplate(key: string): ProjectTemplate {
 
 export function createProjectFromTemplate(
   key: string,
+  name: string,
   id: string = crypto.randomUUID(),
 ): SuspensionProject {
   const template = getProjectTemplate(key);
-  return { ...structuredClone(template.project), id, name: template.name };
+  return { ...structuredClone(template.project), id, name };
 }
 
 export function resetProjectToTemplate(

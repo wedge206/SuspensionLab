@@ -69,8 +69,8 @@ export class ChassisScene {
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x82aef0, roughness: 0.4 })),
   ];
   private readonly rearMainArmInnerMounts = [
-    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x80b69d, roughness: 0.4 })),
-    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x80b69d, roughness: 0.4 })),
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
   ];
   private readonly rearToeArmInnerMounts = [
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
@@ -82,7 +82,7 @@ export class ChassisScene {
   ];
   private readonly rearMainArms = new THREE.LineSegments(
     new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x80b69d }),
+    new THREE.LineBasicMaterial({ color: 0x00ffff }),
   );
   private readonly rearToeArms = new THREE.LineSegments(
     new THREE.BufferGeometry(),

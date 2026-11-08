@@ -4,47 +4,89 @@ import { DEFAULT_TEMPLATE_KEY } from "../templates/templates";
 
 const STORAGE_KEY = "suspension-lab.projects.v1";
 const TEMPLATE_STORAGE_KEY = "suspension-lab.project-templates.v1";
+export const CORRUPT_BACKUP_KEY = `${STORAGE_KEY}.corrupt-backup`;
 
 export interface ProjectLibrary {
   projects: SuspensionProject[];
   templateKeys: Record<string, string>;
+  /** Saved entries that failed validation. They are written back unchanged on save so they are never lost. */
+  unreadable: unknown[];
+  /** Human-readable description of anything that could not be loaded, or "" if everything loaded. */
+  warning: string;
 }
 
 export function loadProjects(): ProjectLibrary {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return { projects: [], templateKeys: {} };
-  const value: unknown = JSON.parse(raw);
-  if (!Array.isArray(value)) throw new Error("Saved project storage is invalid. Export or clear browser storage to recover.");
-  const projects = value.map(validateProject);
-  const rawTemplateKeys = localStorage.getItem(TEMPLATE_STORAGE_KEY);
-  const parsedTemplateKeys: unknown = rawTemplateKeys ? JSON.parse(rawTemplateKeys) : {};
-  if (!parsedTemplateKeys || typeof parsedTemplateKeys !== "object" || Array.isArray(parsedTemplateKeys)) {
-    throw new Error("Saved project template assignments are invalid. Export or clear browser storage to recover.");
+  if (!raw) return { projects: [], templateKeys: {}, unreadable: [], warning: "" };
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    value = undefined;
   }
-  const templateKeys: Record<string, string> = {};
-  for (const [projectId, templateKey] of Object.entries(parsedTemplateKeys)) {
-    if (typeof templateKey !== "string") {
-      throw new Error("Saved project template assignments are invalid. Export or clear browser storage to recover.");
+  if (!Array.isArray(value)) {
+    // Preserve the unreadable data before the app replaces it with a fresh library.
+    localStorage.setItem(CORRUPT_BACKUP_KEY, raw);
+    throw new Error(
+      `Saved project storage is invalid. Its contents were backed up to the "${CORRUPT_BACKUP_KEY}" storage key.`,
+    );
+  }
+  const projects: SuspensionProject[] = [];
+  const unreadable: unknown[] = [];
+  const failures: string[] = [];
+  for (const entry of value) {
+    try {
+      projects.push(validateProject(entry));
+    } catch (error) {
+      unreadable.push(entry);
+      const name = entry && typeof entry === "object" && typeof (entry as { name?: unknown }).name === "string"
+        ? `"${(entry as { name: string }).name}"`
+        : "An unnamed project";
+      failures.push(`${name}: ${error instanceof Error ? error.message : "invalid project"}`);
     }
-    templateKeys[projectId] = templateKey;
   }
+  const templateKeys = loadTemplateKeys();
   for (const project of projects) {
     templateKeys[project.id] ??= DEFAULT_TEMPLATE_KEY;
   }
-  return { projects, templateKeys };
+  const warning = failures.length
+    ? `${failures.length} saved project${failures.length === 1 ? "" : "s"} could not be loaded and ${
+      failures.length === 1 ? "was" : "were"} kept in storage unchanged. ${failures.join(" ")}`
+    : "";
+  return { projects, templateKeys, unreadable, warning };
+}
+
+function loadTemplateKeys(): Record<string, string> {
+  // Template assignments only affect Reset, so bad data here falls back to the default template
+  // instead of blocking the project library from loading.
+  const templateKeys: Record<string, string> = {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(localStorage.getItem(TEMPLATE_STORAGE_KEY) ?? "{}");
+  } catch {
+    return templateKeys;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return templateKeys;
+  for (const [projectId, templateKey] of Object.entries(parsed)) {
+    if (typeof templateKey === "string") templateKeys[projectId] = templateKey;
+  }
+  return templateKeys;
 }
 
 export function saveProjects(
   projects: SuspensionProject[],
   templateKeys: Record<string, string>,
+  unreadable: unknown[] = [],
 ): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(
-    Object.fromEntries(projects.map((project) => [
-      project.id,
-      templateKeys[project.id] ?? DEFAULT_TEMPLATE_KEY,
-    ])),
-  ));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...projects, ...unreadable]));
+  const unreadableIds = unreadable.flatMap((entry) => {
+    const id = entry && typeof entry === "object" ? (entry as { id?: unknown }).id : undefined;
+    return typeof id === "string" && templateKeys[id] !== undefined ? [[id, templateKeys[id]]] : [];
+  });
+  localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(Object.fromEntries([
+    ...unreadableIds,
+    ...projects.map((project) => [project.id, templateKeys[project.id] ?? DEFAULT_TEMPLATE_KEY]),
+  ])));
 }
 
 export function downloadProject(project: SuspensionProject): void {

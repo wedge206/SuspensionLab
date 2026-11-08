@@ -20,7 +20,7 @@ bindInputs(state, elements, renderers, manager.persistOrNotify);
 renderers.renderProjectSelect();
 renderers.renderGeometry();
 
-if (state.initialNotice) renderers.showNotice(state.initialNotice);
+if (state.initialNotice) renderers.showNotice(state.initialNotice, "error");
 void import("./viewer/scene").then(({ ChassisScene: Scene }) => {
   viewer = new Scene(
     document.querySelector<HTMLDivElement>("#viewport")!,

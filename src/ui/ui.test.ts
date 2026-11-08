@@ -73,6 +73,7 @@ describe("UI bindings", () => {
       current,
       projects: [current],
       projectTemplateKeys: { first: DEFAULT_TEMPLATE_KEY },
+      unreadableProjects: [] as unknown[],
       initialNotice: "",
     };
   }
@@ -138,6 +139,28 @@ describe("UI bindings", () => {
     expect(state.initialNotice).toBe("storage corrupt");
     expect(state.projects).toEqual([state.current]);
     expect(state.projectTemplateKeys[state.current.id]).toBe(DEFAULT_TEMPLATE_KEY);
+  });
+
+  it("keeps a new notice visible for its full duration after an earlier notice", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("window", globalThis);
+    const classes = new Set<string>();
+    Object.assign(getNode("#notice"), {
+      dataset: {},
+      classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) },
+    });
+    try {
+      const ui = createUiRenderers(makeState(), getUiElements(), vi.fn());
+      ui.showNotice("first");
+      vi.advanceTimersByTime(4000);
+      ui.showNotice("second");
+      vi.advanceTimersByTime(1000);
+      expect(classes.has("visible")).toBe(true);
+      vi.advanceTimersByTime(3500);
+      expect(classes.has("visible")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("formats alignment values and unavailable geometry", () => {

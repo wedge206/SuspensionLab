@@ -69,11 +69,14 @@ export function createUiRenderers(state: ProjectState, elements: UiElements, upd
     rearTrailingArmMountWidthInput,
     rearTrailingArmMountForwardOffsetInput,
   } = elements;
+  let noticeTimer: number | undefined;
   function showNotice(message: string, type: "error" | "success" = "success"): void {
     notice.textContent = message;
     notice.dataset.type = type;
     notice.classList.add("visible");
-    window.setTimeout(() => notice.classList.remove("visible"), 4500);
+    // Restart the timer so an earlier notice's timeout cannot hide this one early.
+    window.clearTimeout(noticeTimer);
+    noticeTimer = window.setTimeout(() => notice.classList.remove("visible"), 4500);
   }
 
   function renderProjectSelect(): void {

@@ -7,6 +7,7 @@ import type { UiRenderers } from "./renderers";
 export function loadProjectState() {
   let projects: SuspensionProject[] = [];
   let projectTemplateKeys: Record<string, string> = {};
+  let unreadableProjects: unknown[] = [];
   let current: SuspensionProject;
   let initialNotice = "";
 
@@ -14,6 +15,8 @@ export function loadProjectState() {
     const loaded = loadProjects();
     projects = loaded.projects;
     projectTemplateKeys = loaded.templateKeys;
+    unreadableProjects = loaded.unreadable;
+    initialNotice = loaded.warning;
     const knownTemplateKeys = new Set(listProjectTemplates().map((template) => template.key));
     for (const project of projects) {
       if (!knownTemplateKeys.has(projectTemplateKeys[project.id])) {
@@ -24,18 +27,19 @@ export function loadProjectState() {
       current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "New suspension project");
       projects = [current];
       projectTemplateKeys[current.id] = DEFAULT_TEMPLATE_KEY;
-      saveProjects(projects, projectTemplateKeys);
+      saveProjects(projects, projectTemplateKeys, unreadableProjects);
     } else {
       current = projects[0];
     }
-} catch (error) {
-  current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "New suspension project");
-  projects = [current];
-  projectTemplateKeys[current.id] = DEFAULT_TEMPLATE_KEY;
-  initialNotice = error instanceof Error ? error.message : "Could not load saved projects.";
-}
+  } catch (error) {
+    current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "New suspension project");
+    projects = [current];
+    projectTemplateKeys = { [current.id]: DEFAULT_TEMPLATE_KEY };
+    unreadableProjects = [];
+    initialNotice = error instanceof Error ? error.message : "Could not load saved projects.";
+  }
 
-return { projects, projectTemplateKeys, current, initialNotice };
+  return { projects, projectTemplateKeys, unreadableProjects, current, initialNotice };
 }
 
 export type ProjectState = ReturnType<typeof loadProjectState>;
@@ -45,7 +49,7 @@ export function bindProjectManager(state: ProjectState, elements: UiElements, re
   const { projectSelect, templateDialog, templateSelect, projectNameInput, createProjectButton } = elements;
   function persist(): void {
     state.projects = state.projects.map((project) => project.id === state.current.id ? state.current : project);
-    saveProjects(state.projects, state.projectTemplateKeys);
+    saveProjects(state.projects, state.projectTemplateKeys, state.unreadableProjects);
   }
 
   function persistOrNotify(): boolean {
@@ -161,7 +165,7 @@ export function bindProjectManager(state: ProjectState, elements: UiElements, re
     renderProjectSelect();
     renderGeometry();
     try {
-      saveProjects(state.projects, state.projectTemplateKeys);
+      saveProjects(state.projects, state.projectTemplateKeys, state.unreadableProjects);
     } catch (error) {
       showNotice(error instanceof Error ? error.message : "Could not save the project library.", "error");
     }

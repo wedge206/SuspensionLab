@@ -84,22 +84,22 @@ export class SceneInteractionController {
     private readonly canvas: HTMLCanvasElement,
     private readonly context: SceneInteractionContext,
   ) {
-    canvas.addEventListener("pointerdown", this.onPointerDown, true);
-    canvas.addEventListener("pointermove", this.onPointerMove, true);
-    canvas.addEventListener("pointerup", this.onPointerUp, true);
-    canvas.addEventListener("pointercancel", this.onPointerCancel, true);
-    canvas.addEventListener("lostpointercapture", this.onLostPointerCapture, true);
+    canvas.addEventListener("pointerdown", this.onPointerDown, { capture: true });
+    canvas.addEventListener("pointermove", this.onPointerMove, { capture: true });
+    canvas.addEventListener("pointerup", this.onPointerUp, { capture: true });
+    canvas.addEventListener("pointercancel", this.onPointerCancel, { capture: true });
+    canvas.addEventListener("lostpointercapture", this.onLostPointerCapture, { capture: true });
     canvas.addEventListener("pointerleave", this.onPointerLeave);
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.canvas.removeEventListener("pointerdown", this.onPointerDown, true);
-    this.canvas.removeEventListener("pointermove", this.onPointerMove, true);
-    this.canvas.removeEventListener("pointerup", this.onPointerUp, true);
-    this.canvas.removeEventListener("pointercancel", this.onPointerCancel, true);
-    this.canvas.removeEventListener("lostpointercapture", this.onLostPointerCapture, true);
+    this.canvas.removeEventListener("pointerdown", this.onPointerDown, { capture: true });
+    this.canvas.removeEventListener("pointermove", this.onPointerMove, { capture: true });
+    this.canvas.removeEventListener("pointerup", this.onPointerUp, { capture: true });
+    this.canvas.removeEventListener("pointercancel", this.onPointerCancel, { capture: true });
+    this.canvas.removeEventListener("lostpointercapture", this.onLostPointerCapture, { capture: true });
     this.canvas.removeEventListener("pointerleave", this.onPointerLeave);
   }
 

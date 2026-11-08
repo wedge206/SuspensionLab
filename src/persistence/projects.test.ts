@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProjectFromTemplate } from "../templates/templates";
-import { loadProjects, readProjectFile, saveProjects } from "./projects";
+import { CORRUPT_BACKUP_KEY, loadProjects, readProjectFile, saveProjects } from "./projects";
 
 const PROJECTS_KEY = "suspension-lab.projects.v1";
 const TEMPLATE_KEYS_KEY = "suspension-lab.project-templates.v1";
@@ -64,6 +64,50 @@ describe("project template assignments", () => {
     expect(loadProjects().projects[0].rearSuspension).toMatchObject({
       toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
     });
+  });
+
+  it("keeps invalid saved projects in storage instead of discarding the library", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    });
+    const good = createProjectFromTemplate("default", "Good", "good-id");
+    const bad = { ...createProjectFromTemplate("default", "Broken", "bad-id"), steeringRack: { widthMm: -1 } };
+    storage.set(PROJECTS_KEY, JSON.stringify([good, bad]));
+    storage.set(TEMPLATE_KEYS_KEY, JSON.stringify({ "good-id": "default", "bad-id": "default" }));
+
+    const loaded = loadProjects();
+    expect(loaded.projects.map((project) => project.id)).toEqual(["good-id"]);
+    expect(loaded.unreadable).toEqual([bad]);
+    expect(loaded.warning).toContain('"Broken"');
+
+    saveProjects(loaded.projects, loaded.templateKeys, loaded.unreadable);
+    expect(JSON.parse(storage.get(PROJECTS_KEY)!)).toEqual([good, bad]);
+    expect(JSON.parse(storage.get(TEMPLATE_KEYS_KEY)!)).toEqual({ "good-id": "default", "bad-id": "default" });
+  });
+
+  it("backs up unparseable storage before reporting it", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    });
+    storage.set(PROJECTS_KEY, "{not json");
+
+    expect(() => loadProjects()).toThrow(CORRUPT_BACKUP_KEY);
+    expect(storage.get(CORRUPT_BACKUP_KEY)).toBe("{not json");
+  });
+
+  it("ignores invalid template assignments instead of failing the load", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    });
+    storage.set(PROJECTS_KEY, JSON.stringify([createProjectFromTemplate("default", "Project", "project-id")]));
+    storage.set(TEMPLATE_KEYS_KEY, "[1, 2]");
+
+    const loaded = loadProjects();
+    expect(loaded.projects).toHaveLength(1);
+    expect(loaded.templateKeys).toEqual({ "project-id": "default" });
   });
 
   it("imports projects without a rear main arm inner mount height", async () => {

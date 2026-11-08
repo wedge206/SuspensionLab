@@ -98,6 +98,12 @@ export function validateProject(value: unknown): SuspensionProject {
   const toeArmLengthMm: unknown = rearSuspension.toeArmLengthMm === undefined
     ? 225
     : rearSuspension.toeArmLengthMm;
+  const rearLeftRotationRad: unknown = rearSuspension.leftRotationRad === undefined
+    ? 0
+    : rearSuspension.leftRotationRad;
+  const rearRightRotationRad: unknown = rearSuspension.rightRotationRad === undefined
+    ? 0
+    : rearSuspension.rightRotationRad;
   const rearHub = project.rearHub && typeof project.rearHub === "object"
     ? project.rearHub as Record<string, unknown>
     : {};
@@ -210,6 +216,10 @@ export function validateProject(value: unknown): SuspensionProject {
       !Number.isFinite(toeArmLengthMm) || toeArmLengthMm <= 0) {
     throw new Error("Rear toe arm length must be a positive finite value.");
   }
+  if (typeof rearLeftRotationRad !== "number" || !Number.isFinite(rearLeftRotationRad) ||
+      typeof rearRightRotationRad !== "number" || !Number.isFinite(rearRightRotationRad)) {
+    throw new Error("Rear arm rotation angles must be finite values.");
+  }
   if (typeof mainArmOuterMountStaticHeightMm !== "number" ||
       !Number.isFinite(mainArmOuterMountStaticHeightMm) || mainArmOuterMountStaticHeightMm <= 0) {
     throw new Error("Main arm outer mount static height must be a positive finite value.");
@@ -292,6 +302,8 @@ export function validateProject(value: unknown): SuspensionProject {
       toeArmMainArmWidthMm,
       mainArmLengthMm,
       toeArmLengthMm,
+      leftRotationRad: rearLeftRotationRad,
+      rightRotationRad: rearRightRotationRad,
     },
     rearHub: {
       mainArmOuterMountStaticHeightMm,

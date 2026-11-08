@@ -64,7 +64,7 @@ describe("built-in project templates", () => {
       rearSuspension: {
         mainArmInnerMountWidthMm: 725, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
         toeArmInnerMountWidthMm: 1100, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
-        mainArmLengthMm: 420, toeArmLengthMm: 225,
+        mainArmLengthMm: 420, toeArmLengthMm: 225, leftRotationRad: 0, rightRotationRad: 0,
       },
       rearHub: {
         mainArmOuterMountStaticHeightMm: 240,

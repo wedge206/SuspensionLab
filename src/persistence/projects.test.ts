@@ -33,6 +33,8 @@ describe("project template assignments", () => {
     project.rearSuspension.toeArmInnerMountWidthMm = 910;
     project.rearSuspension.toeArmInnerMountHeightMm = 310;
     project.rearSuspension.toeArmMainArmWidthMm = 210;
+    project.rearSuspension.leftRotationRad = 0.4;
+    project.rearSuspension.rightRotationRad = -0.3;
 
     saveProjects([project], { "project-id": "default" });
 
@@ -42,6 +44,7 @@ describe("project template assignments", () => {
     expect(loadProjects().projects[0].rearSuspension.frontToRearLengthMm).toBe(1800);
     expect(loadProjects().projects[0].rearSuspension).toMatchObject({
       toeArmInnerMountWidthMm: 910, toeArmInnerMountHeightMm: 310, toeArmMainArmWidthMm: 210,
+      leftRotationRad: 0.4, rightRotationRad: -0.3,
     });
   });
 

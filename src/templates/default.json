@@ -55,17 +55,19 @@
     "mainArmInnerMountWidthMm": 400,
     "mainArmInnerMountHeightMm": 250,
     "frontToRearLengthMm": 1900,
-    "toeArmInnerMountWidthMm": 700,
+    "toeArmInnerMountWidthMm": 685,
     "toeArmInnerMountHeightMm": 260,
     "toeArmMainArmWidthMm": 201,
     "mainArmLengthMm": 370,
-    "toeArmLengthMm": 220
+    "toeArmLengthMm": 210,
+    "leftRotationRad": 0,
+    "rightRotationRad": 0
   },
   "rearHub": {
     "mainArmOuterMountStaticHeightMm": 240,
     "toeArmOuterMountOffsetMm": 150,
     "toeArmOuterMountHeightMm": 10,
-    "trailingArmLengthMm": 355,
+    "trailingArmLengthMm": 455,
     "trailingArmMountHeightMm": 308,
     "trailingArmMountWidthMm": 1160,
     "trailingArmMountForwardOffsetMm": 460

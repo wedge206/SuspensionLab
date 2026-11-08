@@ -39,6 +39,8 @@ describe("rear suspension main arm inner mount height", () => {
       toeArmMainArmWidthMm: 190,
       mainArmLengthMm: 420,
       toeArmLengthMm: 225,
+      leftRotationRad: 0,
+      rightRotationRad: 0,
     });
 
   });
@@ -103,6 +105,28 @@ describe("rear suspension toe arm dimensions", () => {
     const { [key]: _omitted, ...remaining } = value.rearSuspension;
     expect(validateProject({ ...value, rearSuspension: remaining }).rearSuspension)
       .toEqual({ ...remaining, [key]: defaultValue });
+  });
+
+  describe("rear arm positions", () => {
+    it("defaults missing positions and preserves saved angles independently", () => {
+      const project = createProjectFromTemplate("default", "Project", "project-id");
+      const { leftRotationRad: _left, rightRotationRad: _right, ...legacy } = project.rearSuspension;
+      expect(validateProject({ ...project, rearSuspension: legacy }).rearSuspension)
+        .toMatchObject({ leftRotationRad: 0, rightRotationRad: 0 });
+      project.rearSuspension.leftRotationRad = 0.4;
+      project.rearSuspension.rightRotationRad = -0.2;
+      expect(validateProject(JSON.parse(JSON.stringify(project))).rearSuspension)
+        .toMatchObject({ leftRotationRad: 0.4, rightRotationRad: -0.2 });
+    });
+
+    it.each(["leftRotationRad", "rightRotationRad"])("rejects invalid %s", (key) => {
+      const project = createProjectFromTemplate("default", "Project", "project-id");
+      for (const value of [NaN, Infinity, null, "0"]) {
+        expect(() => validateProject({
+          ...project, rearSuspension: { ...project.rearSuspension, [key]: value },
+        })).toThrow("Rear arm rotation angles must be finite values.");
+      }
+    });
   });
 
   it.each(dimensions)("preserves valid $key", ({ key }) => {

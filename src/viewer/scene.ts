@@ -5,7 +5,9 @@ import {
   controlArmPickupPoints,
   frontTopMountPoints,
   orientHubPoint,
+  rearArmAxisEnd,
   rearMainArmInnerMountPoints,
+  rearMainArmOuterMountPoints,
   rearTrailingArmMountPoints,
   rearToeArmInnerMountPoints,
   steeredHubFacePoints,
@@ -46,8 +48,10 @@ export class ChassisScene {
   private scrubRadiusGeometryVisible = true;
   private scrubRadiusGeometryAvailable: [boolean, boolean] = [false, false];
   private hoveredBallJointIndex: number | null = null;
+  private hoveredRearOuterMountIndex: number | null = null;
   private hoveredSteeringRackPivotIndex: number | null = null;
   private draggingBallJointIndex: number | null = null;
+  private draggingRearOuterMountIndex: number | null = null;
   private draggingSteeringRackPivotIndex: number | null = null;
   private dragStartRackTravelMm = 0;
   private dragStartRackPointerX = 0;
@@ -72,6 +76,10 @@ export class ChassisScene {
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
   ];
+  private readonly rearMainArmOuterMounts = [
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x00ffff, roughness: 0.4 })),
+  ];
   private readonly rearToeArmInnerMounts = [
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
@@ -83,6 +91,10 @@ export class ChassisScene {
   private readonly rearMainArms = new THREE.LineSegments(
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0x00ffff }),
+  );
+  private readonly rearTrailingArms = new THREE.LineSegments(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0xffffff }),
   );
   private readonly rearToeArms = new THREE.LineSegments(
     new THREE.BufferGeometry(),
@@ -229,8 +241,10 @@ export class ChassisScene {
   private readonly onPointerCancel = (event: PointerEvent): void => this.finishDrag(event);
   private readonly onLostPointerCapture = (event: PointerEvent): void => this.finishDrag(event);
   private readonly onPointerLeave = (): void => {
-    if (this.draggingBallJointIndex === null && this.draggingSteeringRackPivotIndex === null) {
+    if (this.draggingBallJointIndex === null && this.draggingRearOuterMountIndex === null &&
+        this.draggingSteeringRackPivotIndex === null) {
       this.setHoveredBallJoint(null);
+      this.setHoveredRearOuterMount(null);
       this.setHoveredSteeringRackPivot(null);
     }
   };
@@ -304,9 +318,11 @@ export class ChassisScene {
       this.strutMountAngleMarkers,
       ...this.pickups,
       ...this.rearMainArmInnerMounts,
+      ...this.rearMainArmOuterMounts,
       ...this.rearToeArmInnerMounts,
       ...this.rearTrailingArmMounts,
       this.rearMainArms,
+      this.rearTrailingArms,
       this.rearToeArms,
       ...this.ballJoints,
       ...this.steeringRackPivots,
@@ -376,6 +392,16 @@ export class ChassisScene {
       project.rearHub.trailingArmMountForwardOffsetMm,
     );
     this.rearTrailingArmMounts.forEach((mount, index) => mount.position.set(...trailingArmMounts[index]));
+    const rearOuterMounts = rearMainArmOuterMountPoints(
+      rearMounts,
+      trailingArmMounts,
+      project.rearSuspension.mainArmLengthMm,
+      project.rearHub.trailingArmLengthMm,
+      project.rearHub.mainArmOuterMountStaticHeightMm,
+      project.rearSuspension.leftRotationRad,
+      project.rearSuspension.rightRotationRad,
+    );
+    this.rearMainArmOuterMounts.forEach((mount, index) => mount.position.set(...rearOuterMounts[index]));
     const toeArmMounts = rearToeArmInnerMountPoints(
       rearMounts,
       project.rearSuspension.toeArmInnerMountWidthMm,
@@ -385,11 +411,16 @@ export class ChassisScene {
     this.rearToeArmInnerMounts.forEach((mount, index) => mount.position.set(...toeArmMounts[index]));
     const outwardEndpoint = (point: Vec3, lengthMm: number): THREE.Vector3 =>
       new THREE.Vector3(point[0], point[1] + Math.sign(point[1]) * lengthMm, point[2]);
-    this.rearMainArms.geometry.setFromPoints(rearMounts.flatMap((mount) => [
+    this.rearMainArms.geometry.setFromPoints(rearMounts.flatMap((mount, index) => [
       new THREE.Vector3(...mount),
-      outwardEndpoint(mount, project.rearSuspension.mainArmLengthMm),
+      new THREE.Vector3(...rearOuterMounts[index]),
     ]));
     this.rearMainArms.geometry.computeBoundingSphere();
+    this.rearTrailingArms.geometry.setFromPoints(trailingArmMounts.flatMap((mount, index) => [
+      new THREE.Vector3(...mount),
+      new THREE.Vector3(...rearOuterMounts[index]),
+    ]));
+    this.rearTrailingArms.geometry.computeBoundingSphere();
     this.rearToeArms.geometry.setFromPoints(toeArmMounts.flatMap((mount) => [
       new THREE.Vector3(...mount),
       outwardEndpoint(mount, project.rearSuspension.toeArmLengthMm),
@@ -747,6 +778,7 @@ export class ChassisScene {
     for (const pickup of [
       ...this.pickups,
       ...this.rearMainArmInnerMounts,
+      ...this.rearMainArmOuterMounts,
       ...this.rearToeArmInnerMounts,
       ...this.rearTrailingArmMounts,
     ]) {
@@ -798,6 +830,8 @@ export class ChassisScene {
     this.controlArmFirstSides.material.dispose();
     this.rearMainArms.geometry.dispose();
     this.rearMainArms.material.dispose();
+    this.rearTrailingArms.geometry.dispose();
+    this.rearTrailingArms.material.dispose();
     this.rearToeArms.geometry.dispose();
     this.rearToeArms.material.dispose();
     this.steeringRack.geometry.dispose();
@@ -832,6 +866,37 @@ export class ChassisScene {
     const index = this.intersectBallJoint(event);
     if (!this.project) return;
     if (index === null) {
+      const rearIndex = this.intersectRearOuterMount(event);
+      if (rearIndex !== null) {
+        const main = this.rearMainArmInnerMounts[rearIndex].position;
+        const trailing = this.rearTrailingArmMounts[rearIndex].position;
+        const outer = this.rearMainArmOuterMounts[rearIndex].position;
+        const axisEnd = rearArmAxisEnd(main.toArray(), trailing.toArray(), outer.toArray());
+        const axis = new THREE.Vector3(...axisEnd).sub(main).normalize();
+        const radial = outer.clone().sub(main);
+        const tangent = axis.clone().cross(radial);
+        const verticalAmplitude = Math.hypot(tangent.z, radial.z - axis.z * radial.dot(axis));
+        if (verticalAmplitude < 1e-6) {
+          this.onGeometryError("Rear arm pivots do not allow vertical movement of this mount.");
+          return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.draggingRearOuterMountIndex = rearIndex;
+        this.setHoveredRearOuterMount(rearIndex);
+        this.dragStartY = event.clientY;
+        this.dragChanged = false;
+        this.dragStartAngle = rearIndex === 0
+          ? this.project.rearSuspension.leftRotationRad
+          : this.project.rearSuspension.rightRotationRad;
+        this.dragVerticalSign = Math.abs(tangent.z) > 1e-6
+          ? Math.sign(tangent.z)
+          : rearIndex === 0 ? 1 : -1;
+        this.controls.enabled = false;
+        this.renderer.domElement.style.cursor = "grabbing";
+        this.renderer.domElement.setPointerCapture(event.pointerId);
+        return;
+      }
       const rackIndex = this.intersectSteeringRackPivot(event);
       if (rackIndex === null) return;
       event.preventDefault();
@@ -881,6 +946,25 @@ export class ChassisScene {
   }
 
   private handlePointerMove(event: PointerEvent): void {
+    if (this.draggingRearOuterMountIndex !== null && this.project) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const index = this.draggingRearOuterMountIndex;
+      const target = this.dragStartAngle + (this.dragStartY - event.clientY) * 0.01 * this.dragVerticalSign;
+      const angle = Math.max(
+        Math.min(-MAX_CONTROL_ARM_DRAG_ANGLE_RAD, this.dragStartAngle),
+        Math.min(Math.max(MAX_CONTROL_ARM_DRAG_ANGLE_RAD, this.dragStartAngle), target),
+      );
+      const current = index === 0
+        ? this.project.rearSuspension.leftRotationRad
+        : this.project.rearSuspension.rightRotationRad;
+      if (Math.abs(angle - current) > 1e-10) this.dragChanged = true;
+      if (index === 0) this.project.rearSuspension.leftRotationRad = angle;
+      else this.project.rearSuspension.rightRotationRad = angle;
+      this.update(this.project);
+      return;
+    }
+
     if (this.draggingSteeringRackPivotIndex !== null && this.project) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -951,10 +1035,26 @@ export class ChassisScene {
     }
 
     this.setHoveredBallJoint(this.intersectBallJoint(event));
+    this.setHoveredRearOuterMount(this.intersectRearOuterMount(event));
     this.setHoveredSteeringRackPivot(this.intersectSteeringRackPivot(event));
   }
 
   private finishDrag(event: PointerEvent): void {
+    if (this.draggingRearOuterMountIndex !== null) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const changed = this.dragChanged;
+      this.draggingRearOuterMountIndex = null;
+      this.controls.enabled = true;
+      if (this.renderer.domElement.hasPointerCapture(event.pointerId)) {
+        this.renderer.domElement.releasePointerCapture(event.pointerId);
+      }
+      this.setHoveredBallJoint(this.intersectBallJoint(event));
+      this.setHoveredRearOuterMount(this.intersectRearOuterMount(event));
+      this.setHoveredSteeringRackPivot(this.intersectSteeringRackPivot(event));
+      if (changed) this.onProjectChange();
+      return;
+    }
     if (this.draggingSteeringRackPivotIndex !== null) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -966,6 +1066,7 @@ export class ChassisScene {
         this.renderer.domElement.releasePointerCapture(event.pointerId);
       }
       this.setHoveredBallJoint(this.intersectBallJoint(event));
+      this.setHoveredRearOuterMount(this.intersectRearOuterMount(event));
       this.setHoveredSteeringRackPivot(this.intersectSteeringRackPivot(event));
       if (changed) this.onProjectChange();
       return;
@@ -981,6 +1082,7 @@ export class ChassisScene {
       this.renderer.domElement.releasePointerCapture(event.pointerId);
     }
     this.setHoveredBallJoint(this.intersectBallJoint(event));
+    this.setHoveredRearOuterMount(this.intersectRearOuterMount(event));
     this.setHoveredSteeringRackPivot(this.intersectSteeringRackPivot(event));
     if (changed) this.onProjectChange();
   }
@@ -995,6 +1097,19 @@ export class ChassisScene {
     const hit = this.raycaster.intersectObjects(this.ballJoints, false)[0];
     if (!hit) return null;
     const index = this.ballJoints.findIndex((joint) => joint.uuid === hit.object.uuid);
+    return index < 0 ? null : index;
+  }
+
+  private intersectRearOuterMount(event: PointerEvent): number | null {
+    const bounds = this.renderer.domElement.getBoundingClientRect();
+    this.pointer.set(
+      ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+      -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = this.raycaster.intersectObjects(this.rearMainArmOuterMounts, false)[0];
+    if (!hit) return null;
+    const index = this.rearMainArmOuterMounts.findIndex((mount) => mount.uuid === hit.object.uuid);
     return index < 0 ? null : index;
   }
 
@@ -1112,6 +1227,25 @@ export class ChassisScene {
     this.updatePointerCursor();
   }
 
+  private setHoveredRearOuterMount(index: number | null): void {
+    if (this.hoveredRearOuterMountIndex === index) {
+      this.updatePointerCursor();
+      return;
+    }
+    if (this.hoveredRearOuterMountIndex !== null) {
+      const previous = this.rearMainArmOuterMounts[this.hoveredRearOuterMountIndex];
+      previous.material.emissive.setHex(0x000000);
+      previous.scale.setScalar(1);
+    }
+    this.hoveredRearOuterMountIndex = index;
+    if (index !== null) {
+      const hovered = this.rearMainArmOuterMounts[index];
+      hovered.material.emissive.setHex(0x006969);
+      hovered.scale.setScalar(1.45);
+    }
+    this.updatePointerCursor();
+  }
+
   private setHoveredSteeringRackPivot(index: number | null): void {
     if (this.hoveredSteeringRackPivotIndex === index) {
       this.updatePointerCursor();
@@ -1133,8 +1267,10 @@ export class ChassisScene {
 
   private updatePointerCursor(): void {
     const dragging = this.draggingBallJointIndex !== null ||
+      this.draggingRearOuterMountIndex !== null ||
       this.draggingSteeringRackPivotIndex !== null;
     const hoveringDraggable = this.hoveredBallJointIndex !== null ||
+      this.hoveredRearOuterMountIndex !== null ||
       this.hoveredSteeringRackPivotIndex !== null;
     this.renderer.domElement.style.cursor = dragging
       ? "grabbing"

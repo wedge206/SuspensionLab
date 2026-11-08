@@ -6,6 +6,7 @@ import {
   hubFacePoints,
   orientHubPoint,
   rearMainArmInnerMountPoints,
+  rearMainArmOuterMountPoints,
   rearTrailingArmMountPoints,
   rearToeArmInnerMountPoints,
   steeringKnucklePivotPoints,
@@ -76,6 +77,49 @@ describe("front lower control arm pickup points", () => {
         expect(trailing[0][0] - rear[0][0]).toBe(290);
         expect(trailing[1][0] - rear[1][0]).toBe(290);
         expect(trailing[0][1] - trailing[1][1]).toBe(1100);
+      });
+
+      describe("rear main arm outer mount points", () => {
+        it("pins the mirrored main arms at the configured station, lateral reach, and static height", () => {
+          const inner = rearMainArmInnerMountPoints(1900, 725, 250);
+          const trailing = rearTrailingArmMountPoints(inner, 1100, 308, 290);
+          const outer = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240);
+          expect(outer).toEqual([[-1315, 782.5, 240], [-1315, -782.5, 240]]);
+          for (let side = 0; side < 2; side += 1) {
+            expect(trailing[side][0] - outer[side][0]).toBe(355);
+            expect(Math.abs(outer[side][1] - inner[side][1])).toBe(420);
+          }
+        });
+
+        it("tracks changes to the pivot station, lengths, and static height independently", () => {
+          const inner = rearMainArmInnerMountPoints(1720, 700, 330);
+          const trailing = rearTrailingArmMountPoints(inner, 980, 315, 275);
+          expect(rearMainArmOuterMountPoints(inner, trailing, 350, 400, 270))
+            .toEqual([[-1195, 700, 270], [-1195, -700, 270]]);
+        });
+
+        it("moves each side independently while preserving both arm lengths", () => {
+          const inner = rearMainArmInnerMountPoints(1900, 725, 250);
+          const trailing = rearTrailingArmMountPoints(inner, 1100, 308, 290);
+          const neutral = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240);
+          const moved = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240, 0.4, -0.3);
+          const leftOnly = rearMainArmOuterMountPoints(inner, trailing, 420, 355, 240, 0.4, 0);
+          const distance = (a: number[], b: number[]) =>
+            Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+          for (let side = 0; side < 2; side += 1) {
+            expect(moved[side][2]).not.toBeCloseTo(neutral[side][2]);
+            expect(distance(moved[side], inner[side])).toBeCloseTo(distance(neutral[side], inner[side]), 8);
+            expect(distance(moved[side], trailing[side])).toBeCloseTo(distance(neutral[side], trailing[side]), 8);
+          }
+          expect(leftOnly[0]).toEqual(moved[0]);
+          expect(leftOnly[1]).toEqual(neutral[1]);
+        });
+
+        it("keeps coordinates finite when the two inner pivots coincide", () => {
+          const inner = rearMainArmInnerMountPoints(1900, 725, 250);
+          const moved = rearMainArmOuterMountPoints(inner, inner, 420, 355, 240, 0.4, -0.3);
+          for (const point of moved) expect(point.every(Number.isFinite)).toBe(true);
+        });
       });
 
       it("follows the rear main arm mount station while keeping its own spacing and height", () => {
@@ -583,7 +627,7 @@ describe("front lower control arm pickup points", () => {
       rearSuspension: {
         mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
         toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
-        mainArmLengthMm: 420, toeArmLengthMm: 225,
+        mainArmLengthMm: 420, toeArmLengthMm: 225, leftRotationRad: 0, rightRotationRad: 0,
       },
       rearHub: {
         mainArmOuterMountStaticHeightMm: 240,

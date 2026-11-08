@@ -84,6 +84,36 @@ export function rearTrailingArmMountPoints(
   ];
 }
 
+export function rearMainArmOuterMountPoints(
+  mainArmMounts: [Vec3, Vec3],
+  trailingArmMounts: [Vec3, Vec3],
+  mainArmLengthMm: number,
+  trailingArmLengthMm: number,
+  staticHeightMm: number,
+  leftRotationRad = 0,
+  rightRotationRad = 0,
+): [Vec3, Vec3] {
+  const neutral: [Vec3, Vec3] = [
+    [trailingArmMounts[0][0] - trailingArmLengthMm, mainArmMounts[0][1] + mainArmLengthMm, staticHeightMm],
+    [trailingArmMounts[1][0] - trailingArmLengthMm, mainArmMounts[1][1] - mainArmLengthMm, staticHeightMm],
+  ];
+  return [
+    rotatePointAroundAxis(neutral[0], mainArmMounts[0], rearArmAxisEnd(mainArmMounts[0], trailingArmMounts[0], neutral[0]), leftRotationRad),
+    rotatePointAroundAxis(neutral[1], mainArmMounts[1], rearArmAxisEnd(mainArmMounts[1], trailingArmMounts[1], neutral[1]), rightRotationRad),
+  ];
+}
+
+export function rearArmAxisEnd(mainMount: Vec3, trailingMount: Vec3, outerMount: Vec3): Vec3 {
+  if (Math.hypot(
+    trailingMount[0] - mainMount[0], trailingMount[1] - mainMount[1], trailingMount[2] - mainMount[2],
+  ) > 1e-9) return trailingMount;
+  const radialY = outerMount[1] - mainMount[1];
+  const radialZ = outerMount[2] - mainMount[2];
+  return Math.hypot(radialY, radialZ) > 1e-9
+    ? [mainMount[0] + 1, mainMount[1], mainMount[2]]
+    : [mainMount[0], mainMount[1] + 1, mainMount[2]];
+}
+
 export function rotatePointAroundAxis(point: Vec3, axisStart: Vec3, axisEnd: Vec3, angle: number): Vec3 {
   const axis = normalize([
     axisEnd[0] - axisStart[0],

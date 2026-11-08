@@ -85,13 +85,6 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .virtual-geometry-toggle input { margin: 0; accent-color: #85b59e; }
 .viewport-hint { position: absolute; right: 12px; bottom: 10px; z-index: 1; color: #83908d; font-size: 10px; pointer-events: none; }
 .geometry-status { position: absolute; top: 54px; left: 12px; z-index: 2; max-width: min(460px, calc(100% - 150px)); padding: 9px 12px; border: 1px solid #9c6655; border-radius: 6px; background: rgba(48, 34, 31, .94); color: #f0d7ce; font-size: 11px; line-height: 1.4; pointer-events: none; }
-.view-compass { position: absolute; top: 12px; right: 12px; z-index: 2; width: 112px; height: 112px; overflow: visible; border: 1px solid rgba(68, 87, 81, .78); border-radius: 50%; background: rgba(18, 25, 28, .84); pointer-events: none; }
-.compass-origin { fill: #d7e3dd; stroke: #17201f; stroke-width: 1.5; }
-.compass-axis { stroke-width: 2.5; stroke-linecap: round; }
-.compass-axis-x { stroke: #e4ab61; }
-.compass-axis-y { stroke: #80b69d; }
-.compass-axis-z { stroke: #82aef0; }
-.compass-label { font: 600 8px var(--mono); paint-order: stroke; stroke: #12191c; stroke-width: 3px; stroke-linejoin: round; }
 .alignment-panel { margin-top: 20px; }
 .alignment-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .alignment-card { min-width: 0; padding: 15px 16px; border: 1px solid #303b3d; border-radius: 8px; background: #181f22; }

@@ -29,13 +29,13 @@ import type { WheelAlignmentMeasurements } from "../domain/coordinates";
 
 const FRAME_HALF_LENGTH = 850;
 const FRAME_HALF_WIDTH = 430;
+const GROUND_SIZE_MM = 3000;
+const GROUND_HALF_SIZE_MM = GROUND_SIZE_MM / 2;
+const GROUND_COMPASS_TEXTURE_WIDTH_PX = 512;
+const GROUND_COMPASS_PLANE_WIDTH_MM = 560;
+const GROUND_COMPASS_TIP_X_PX = 500;
+const GROUND_COMPASS_LENGTH_SCALE = 0.75;
 const MAX_CONTROL_ARM_DRAG_ANGLE_RAD = Math.PI / 2;
-
-interface CompassAxis {
-  direction: THREE.Vector3;
-  line: SVGLineElement;
-  label: SVGTextElement;
-}
 
 export class ChassisScene {
   private readonly renderer: THREE.WebGLRenderer;
@@ -243,9 +243,10 @@ export class ChassisScene {
     new THREE.LineBasicMaterial({ color: 0xf2f5ee }),
   );
   private readonly frame: THREE.LineSegments;
+  private readonly groundGrid: THREE.Group;
+  private readonly groundCompass: THREE.Group;
+  private readonly rearGroundMarker: THREE.Mesh;
   private readonly resizeObserver: ResizeObserver;
-  private readonly compass = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  private readonly compassAxes: CompassAxis[];
   private readonly onPointerDown = (event: PointerEvent): void => this.handlePointerDown(event);
   private readonly onPointerMove = (event: PointerEvent): void => this.handlePointerMove(event);
   private readonly onPointerUp = (event: PointerEvent): void => this.finishDrag(event);
@@ -277,24 +278,6 @@ export class ChassisScene {
     this.geometryStatus.setAttribute("role", "status");
     this.geometryStatus.hidden = true;
     host.append(this.geometryStatus);
-    this.compass.setAttribute("viewBox", "0 0 120 120");
-    this.compass.setAttribute("class", "view-compass");
-    this.compass.setAttribute("role", "img");
-    this.compass.setAttribute("aria-label", "3D orientation compass showing vehicle front, left, and up");
-    this.compass.innerHTML = `
-      <defs>
-        <marker id="compass-arrow-x" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e4ab61" /></marker>
-        <marker id="compass-arrow-y" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#80b69d" /></marker>
-        <marker id="compass-arrow-z" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#82aef0" /></marker>
-      </defs>
-      <circle cx="60" cy="60" r="3" class="compass-origin" />
-    `;
-    this.compassAxes = [
-      this.createCompassAxis([1, 0, 0], "FRONT", "#e4ab61", "x"),
-      this.createCompassAxis([0, 1, 0], "LEFT", "#80b69d", "y"),
-      this.createCompassAxis([0, 0, 1], "UP", "#82aef0", "z"),
-    ];
-    host.append(this.compass);
     this.scene.background = new THREE.Color(0x12191c);
     this.scene.add(new THREE.HemisphereLight(0xe4f0e9, 0x263336, 2.2));
 
@@ -302,7 +285,6 @@ export class ChassisScene {
     key.position.set(900, -800, 1400);
     this.scene.add(key);
 
-    this.scene.add(this.createGroundGrid());
     const initialRearMounts = rearMainArmInnerMountPoints(
       initialProject.rearSuspension.frontToRearLengthMm,
       initialProject.rearSuspension.mainArmInnerMountWidthMm,
@@ -314,6 +296,16 @@ export class ChassisScene {
       initialProject.rearSuspension.toeArmInnerMountHeightMm,
       initialProject.rearSuspension.toeArmMainArmWidthMm,
     );
+    this.groundGrid = this.createGroundGrid();
+    this.scene.add(this.groundGrid);
+    this.groundCompass = this.createGroundCompass();
+    const rearGroundMarker = this.groundCompass.getObjectByName("Rear");
+    if (!(rearGroundMarker instanceof THREE.Mesh)) {
+      throw new Error("Unable to create rear ground marker.");
+    }
+    this.rearGroundMarker = rearGroundMarker;
+    this.scene.add(this.groundCompass);
+    this.updateGroundGrid(initialRearMounts[0][0]);
     this.frame = this.createFrame(
       initialProject.frontLowerControlArmPickup.controlArmDepthMm,
       initialProject.frontLowerControlArmPickup.frontHeightMm,
@@ -427,6 +419,7 @@ export class ChassisScene {
       project.rearSuspension.toeArmInnerMountHeightMm,
       project.rearSuspension.toeArmMainArmWidthMm,
     );
+    this.updateGroundGrid(rearMounts[0][0]);
     this.rearToeArmInnerMounts.forEach((mount, index) => mount.position.set(...toeArmMounts[index]));
     let rearGeometryMessage = "";
     try {
@@ -809,6 +802,14 @@ export class ChassisScene {
     this.renderer.domElement.removeEventListener("pointerleave", this.onPointerLeave);
     this.controls.dispose();
     this.renderer.dispose();
+    for (const marker of this.groundCompass.children) {
+      if (marker instanceof THREE.Mesh) {
+        marker.geometry.dispose();
+        const material = marker.material as THREE.MeshBasicMaterial;
+        material.map?.dispose();
+        material.dispose();
+      }
+    }
     for (const pickup of [
       ...this.pickups,
       ...this.rearMainArmInnerMounts,
@@ -1367,13 +1368,13 @@ export class ChassisScene {
 
   private createGroundGrid(): THREE.Group {
     const group = new THREE.Group();
-    const grid = new THREE.GridHelper(3000, 30, 0x465659, 0x2a373a);
+    const grid = new THREE.GridHelper(GROUND_SIZE_MM, 30, 0x465659, 0x2a373a);
     grid.rotation.x = Math.PI / 2;
     group.add(grid);
 
     const centerlineGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-1500, 0, 1),
-      new THREE.Vector3(1500, 0, 1),
+      new THREE.Vector3(-GROUND_HALF_SIZE_MM, 0, 1),
+      new THREE.Vector3(GROUND_HALF_SIZE_MM, 0, 1),
     ]);
     group.add(new THREE.Line(
       centerlineGeometry,
@@ -1381,6 +1382,26 @@ export class ChassisScene {
     ));
     (group.children[group.children.length - 1] as THREE.Line).computeLineDistances();
     return group;
+  }
+
+  private updateGroundGrid(rearMainArmX: number): void {
+    const frameRearX = rearMainArmX - (FRAME_HALF_LENGTH - FRONT_PICKUP_STATION_MM);
+    const groundOverhang = GROUND_HALF_SIZE_MM - FRAME_HALF_LENGTH;
+    const frontGroundX = FRAME_HALF_LENGTH + groundOverhang;
+    const rearGroundX = frameRearX - groundOverhang;
+    this.groundGrid.position.x = (frontGroundX + rearGroundX) / 2;
+    this.groundGrid.scale.x = (frontGroundX - rearGroundX) / GROUND_SIZE_MM;
+    for (const label of ["Left", "Right"] as const) {
+      const marker = this.groundCompass.getObjectByName(label);
+      if (!(marker instanceof THREE.Mesh)) {
+        throw new Error(`Unable to find ${label.toLowerCase()} ground marker.`);
+      }
+      marker.position.x = this.groundGrid.position.x;
+    }
+
+    const tipOffsetMm =
+      (GROUND_COMPASS_TIP_X_PX / GROUND_COMPASS_TEXTURE_WIDTH_PX - 0.5) * GROUND_COMPASS_PLANE_WIDTH_MM;
+    this.rearGroundMarker.position.x = rearGroundX + tipOffsetMm;
   }
 
   private createFrame(
@@ -1429,49 +1450,83 @@ export class ChassisScene {
     this.renderer.setSize(width, height, false);
   }
 
-  private createCompassAxis(
-    direction: [number, number, number],
-    name: string,
-    color: string,
-    axis: string,
-  ): CompassAxis {
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("class", `compass-axis compass-axis-${axis}`);
-    line.setAttribute("marker-end", `url(#compass-arrow-${axis})`);
-    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    label.setAttribute("class", `compass-label compass-label-${axis}`);
-    label.setAttribute("fill", color);
-    label.textContent = name;
-    this.compass.append(line, label);
-    return { direction: new THREE.Vector3(...direction), line, label };
-  }
+  private createGroundCompass(): THREE.Group {
+    const tipOffsetMm =
+      (GROUND_COMPASS_TIP_X_PX / GROUND_COMPASS_TEXTURE_WIDTH_PX - 0.5) * GROUND_COMPASS_PLANE_WIDTH_MM;
+    const markerCenterMm = GROUND_HALF_SIZE_MM - tipOffsetMm;
+    const directions = [
+      { label: "Front", color: [126, 212, 157], x: 1, y: 0, rotation: 0 },
+      { label: "Rear", color: [235, 119, 111], x: -1, y: 0, rotation: Math.PI },
+      { label: "Left", color: [246, 232, 166], x: 0, y: 1, rotation: Math.PI / 2 },
+      { label: "Right", color: [126, 174, 245], x: 0, y: -1, rotation: -Math.PI / 2 },
+    ];
+    const markers = new THREE.Group();
 
-  private updateCompass(): void {
-    const center = 60;
-    const projectedAxes = this.compassAxes.map((axis) => ({
-      axis,
-      direction: axis.direction.clone().transformDirection(this.camera.matrixWorldInverse),
-    })).sort((a, b) => a.direction.z - b.direction.z);
+    for (const direction of directions) {
+      const canvas = document.createElement("canvas");
+      canvas.width = GROUND_COMPASS_TEXTURE_WIDTH_PX;
+      canvas.height = 192;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        throw new Error("Unable to create ground compass labels.");
+      }
 
-    for (const { axis, direction } of projectedAxes) {
-      const x = center + direction.x * 38;
-      const y = center - direction.y * 38;
-      axis.line.setAttribute("x1", String(center));
-      axis.line.setAttribute("y1", String(center));
-      axis.line.setAttribute("x2", x.toFixed(1));
-      axis.line.setAttribute("y2", y.toFixed(1));
-      axis.line.style.opacity = String(0.55 + (direction.z + 1) * 0.22);
-      axis.label.setAttribute("x", String(Math.max(8, Math.min(112, x + direction.x * 9))));
-      axis.label.setAttribute("y", String(Math.max(12, Math.min(110, y - direction.y * 9 + 3))));
-      axis.label.setAttribute("text-anchor", direction.x < -0.25 ? "end" : "start");
+      const [red, green, blue] = direction.color;
+      context.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.36)`;
+      context.strokeStyle = `rgba(${red}, ${green}, ${blue}, 0.68)`;
+      context.lineWidth = 5;
+      context.lineJoin = "round";
+      const shortenX = (x: number): number =>
+        GROUND_COMPASS_TIP_X_PX - (GROUND_COMPASS_TIP_X_PX - x) * GROUND_COMPASS_LENGTH_SCALE;
+      context.beginPath();
+      context.moveTo(shortenX(20), 48);
+      context.lineTo(shortenX(342), 48);
+      context.lineTo(shortenX(342), 12);
+      context.lineTo(shortenX(GROUND_COMPASS_TIP_X_PX), 96);
+      context.lineTo(shortenX(342), 180);
+      context.lineTo(shortenX(342), 144);
+      context.lineTo(shortenX(20), 144);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = "#29312d";
+      context.font = "900 64px sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      if (direction.label === "Left") {
+        context.translate(shortenX(190), 96);
+        context.rotate(Math.PI);
+        context.fillText(direction.label, 0, 0);
+      } else {
+        context.fillText(direction.label, shortenX(190), 96);
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const marker = new THREE.Mesh(
+        new THREE.PlaneGeometry(GROUND_COMPASS_PLANE_WIDTH_MM, 210),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          toneMapped: false,
+        }),
+      );
+      marker.name = direction.label;
+      marker.position.set(direction.x * markerCenterMm, direction.y * markerCenterMm, 3);
+      marker.rotation.z = direction.rotation;
+      marker.renderOrder = 1;
+      markers.add(marker);
     }
+
+    return markers;
   }
 
   private animate = (): void => {
     this.controls.update();
     this.camera.updateMatrixWorld();
     this.camera.matrixWorldInverse.copy(this.camera.matrixWorld).invert();
-    this.updateCompass();
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this.animate);
   };

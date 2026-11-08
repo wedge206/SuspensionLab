@@ -71,6 +71,19 @@ export function rearToeArmInnerMountPoints(
   ];
 }
 
+export function rearTrailingArmMountPoints(
+  mainArmMounts: [Vec3, Vec3],
+  widthMm: number,
+  heightMm: number,
+  forwardOffsetMm: number,
+): [Vec3, Vec3] {
+  const halfWidth = widthMm / 2;
+  return [
+    [mainArmMounts[0][0] + forwardOffsetMm, halfWidth, heightMm],
+    [mainArmMounts[1][0] + forwardOffsetMm, -halfWidth, heightMm],
+  ];
+}
+
 export function rotatePointAroundAxis(point: Vec3, axisStart: Vec3, axisEnd: Vec3, angle: number): Vec3 {
   const axis = normalize([
     axisEnd[0] - axisStart[0],

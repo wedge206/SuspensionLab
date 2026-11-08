@@ -66,6 +66,15 @@ describe("built-in project templates", () => {
         toeArmInnerMountWidthMm: 1100, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
         mainArmLengthMm: 420, toeArmLengthMm: 225,
       },
+      rearHub: {
+        mainArmOuterMountStaticHeightMm: 240,
+        toeArmOuterMountOffsetMm: 150,
+        toeArmOuterMountHeightMm: 10,
+        trailingArmLengthMm: 355,
+        trailingArmMountHeightMm: 308,
+        trailingArmMountWidthMm: 1100,
+        trailingArmMountForwardOffsetMm: 290,
+      },
     });
   });
 

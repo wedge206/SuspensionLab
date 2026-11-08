@@ -244,7 +244,7 @@ app.innerHTML = `
           </div>
           <div class="tab-pane" id="tab-rear">
             <section class="build-sequence">
-              <div class="geometry-heading"><h2>Rear suspension</h2><span>Control arm mounts</span></div>
+              <div class="geometry-heading"><h2>Rear Subframe</h2><span>Control arm mounts</span></div>
               <label class="dimension-field" for="rear-main-arm-inner-mount-width">
                 <span><strong>Main arm inner mount width</strong><small>Distance between left and right inner mounts</small></span>
                 <span class="dimension-input"><input id="rear-main-arm-inner-mount-width" type="number" min="1" step="1" /> <small>mm</small></span>
@@ -276,6 +276,37 @@ app.innerHTML = `
               <label class="dimension-field" for="rear-toe-arm-length">
                 <span><strong>Rear Toe Arm Length</strong><small>Outward from toe arm inner mounts</small></span>
                 <span class="dimension-input"><input id="rear-toe-arm-length" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+            </section>
+            <section class="build-sequence">
+              <div class="geometry-heading"><h2>Rear Hub</h2><span>Outer arm mounts</span></div>
+              <label class="dimension-field" for="rear-main-arm-outer-mount-static-height">
+                <span><strong>Main arm outer mount static height</strong><small>Height above the ground plane</small></span>
+                <span class="dimension-input"><input id="rear-main-arm-outer-mount-static-height" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-toe-arm-outer-mount-offset">
+                <span><strong>Toe arm outer mount offset</strong><small>Offset from the main arm outer mount</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-outer-mount-offset" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-toe-arm-outer-mount-height">
+                <span><strong>Toe arm outer mount height</strong><small>Height above the ground plane</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-outer-mount-height" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-trailing-arm-length">
+                <span><strong>Trailing Arm Length</strong><small>Length of the trailing arm</small></span>
+                <span class="dimension-input"><input id="rear-trailing-arm-length" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-trailing-arm-mount-height">
+                <span><strong>Trailing Arm Mount Height</strong><small>Height above the ground plane</small></span>
+                <span class="dimension-input"><input id="rear-trailing-arm-mount-height" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-trailing-arm-mount-width">
+                <span><strong>Trailing Arm Mount Width</strong><small>Distance between left and right mounts</small></span>
+                <span class="dimension-input"><input id="rear-trailing-arm-mount-width" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-trailing-arm-mount-forward-offset">
+                <span><strong>Trailing Arm Mount Forward Offset</strong><small>Forward offset from the rear hub</small></span>
+                <span class="dimension-input"><input id="rear-trailing-arm-mount-forward-offset" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
             </section>
           </div>
@@ -402,6 +433,20 @@ const rearMainArmLengthInput =
   document.querySelector<HTMLInputElement>("#rear-main-arm-length")!;
 const rearToeArmLengthInput =
   document.querySelector<HTMLInputElement>("#rear-toe-arm-length")!;
+const rearMainArmOuterMountStaticHeightInput =
+  document.querySelector<HTMLInputElement>("#rear-main-arm-outer-mount-static-height")!;
+const rearToeArmOuterMountOffsetInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-outer-mount-offset")!;
+const rearToeArmOuterMountHeightInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-outer-mount-height")!;
+const rearTrailingArmLengthInput =
+  document.querySelector<HTMLInputElement>("#rear-trailing-arm-length")!;
+const rearTrailingArmMountHeightInput =
+  document.querySelector<HTMLInputElement>("#rear-trailing-arm-mount-height")!;
+const rearTrailingArmMountWidthInput =
+  document.querySelector<HTMLInputElement>("#rear-trailing-arm-mount-width")!;
+const rearTrailingArmMountForwardOffsetInput =
+  document.querySelector<HTMLInputElement>("#rear-trailing-arm-mount-forward-offset")!;
 const scrubGeometryToggle = document.querySelector<HTMLInputElement>("#show-scrub-geometry")!;
 let scrubGeometryVisible = scrubGeometryToggle.checked;
 let viewer: ChassisScene | undefined;
@@ -490,6 +535,15 @@ function renderGeometry(): void {
   rearToeArmMainArmWidthInput.value = String(current.rearSuspension.toeArmMainArmWidthMm);
   rearMainArmLengthInput.value = String(current.rearSuspension.mainArmLengthMm);
   rearToeArmLengthInput.value = String(current.rearSuspension.toeArmLengthMm);
+  rearMainArmOuterMountStaticHeightInput.value =
+    String(current.rearHub.mainArmOuterMountStaticHeightMm);
+  rearToeArmOuterMountOffsetInput.value = String(current.rearHub.toeArmOuterMountOffsetMm);
+  rearToeArmOuterMountHeightInput.value = String(current.rearHub.toeArmOuterMountHeightMm);
+  rearTrailingArmLengthInput.value = String(current.rearHub.trailingArmLengthMm);
+  rearTrailingArmMountHeightInput.value = String(current.rearHub.trailingArmMountHeightMm);
+  rearTrailingArmMountWidthInput.value = String(current.rearHub.trailingArmMountWidthMm);
+  rearTrailingArmMountForwardOffsetInput.value =
+    String(current.rearHub.trailingArmMountForwardOffsetMm);
   document.querySelector("#front-point-spacing")!.textContent =
     `${(current.frontLowerControlArmPickup.widthMm * 2).toFixed(0)} mm`;
   viewer?.update(current);
@@ -661,6 +715,40 @@ rearMainArmLengthInput.addEventListener("change", () =>
   updateRearSuspensionDimension("mainArmLengthMm", rearMainArmLengthInput, "Rear Main Arm Length"));
 rearToeArmLengthInput.addEventListener("change", () =>
   updateRearSuspensionDimension("toeArmLengthMm", rearToeArmLengthInput, "Rear Toe Arm Length"));
+rearMainArmOuterMountStaticHeightInput.addEventListener("change", () =>
+  updateRearHubDimension("mainArmOuterMountStaticHeightMm", rearMainArmOuterMountStaticHeightInput, "Main arm outer mount static height"));
+rearToeArmOuterMountOffsetInput.addEventListener("change", () =>
+  updateRearHubDimension("toeArmOuterMountOffsetMm", rearToeArmOuterMountOffsetInput, "Toe arm outer mount offset"));
+rearToeArmOuterMountHeightInput.addEventListener("change", () =>
+  updateRearHubDimension("toeArmOuterMountHeightMm", rearToeArmOuterMountHeightInput, "Toe arm outer mount height"));
+rearTrailingArmLengthInput.addEventListener("change", () =>
+  updateRearHubDimension("trailingArmLengthMm", rearTrailingArmLengthInput, "Trailing Arm Length"));
+rearTrailingArmMountHeightInput.addEventListener("change", () =>
+  updateRearHubDimension("trailingArmMountHeightMm", rearTrailingArmMountHeightInput, "Trailing Arm Mount Height"));
+rearTrailingArmMountWidthInput.addEventListener("change", () =>
+  updateRearHubDimension("trailingArmMountWidthMm", rearTrailingArmMountWidthInput, "Trailing Arm Mount Width"));
+rearTrailingArmMountForwardOffsetInput.addEventListener("change", () =>
+  updateRearHubDimension(
+    "trailingArmMountForwardOffsetMm",
+    rearTrailingArmMountForwardOffsetInput,
+    "Trailing Arm Mount Forward Offset",
+  ));
+
+function updateRearHubDimension(
+  key: keyof SuspensionProject["rearHub"],
+  input: HTMLInputElement,
+  label: string,
+): void {
+  const value = Number(input.value);
+  if (!Number.isFinite(value) || value <= 0) {
+    showNotice(`${label} must be a positive finite number.`, "error");
+    renderGeometry();
+    return;
+  }
+  current.rearHub[key] = value;
+  renderGeometry();
+  persistOrNotify();
+}
 
 function updateRearSuspensionDimension(
   key: keyof SuspensionProject["rearSuspension"],

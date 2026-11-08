@@ -6,6 +6,7 @@ import {
   frontTopMountPoints,
   orientHubPoint,
   rearMainArmInnerMountPoints,
+  rearTrailingArmMountPoints,
   rearToeArmInnerMountPoints,
   steeredHubFacePoints,
   steeringKnucklePivotPoints,
@@ -74,6 +75,10 @@ export class ChassisScene {
   private readonly rearToeArmInnerMounts = [
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
+  ];
+  private readonly rearTrailingArmMounts = [
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x7be0e6, roughness: 0.4 })),
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x7be0e6, roughness: 0.4 })),
   ];
   private readonly rearMainArms = new THREE.LineSegments(
     new THREE.BufferGeometry(),
@@ -300,6 +305,7 @@ export class ChassisScene {
       ...this.pickups,
       ...this.rearMainArmInnerMounts,
       ...this.rearToeArmInnerMounts,
+      ...this.rearTrailingArmMounts,
       this.rearMainArms,
       this.rearToeArms,
       ...this.ballJoints,
@@ -363,6 +369,13 @@ export class ChassisScene {
       project.rearSuspension.mainArmInnerMountHeightMm,
     );
     this.rearMainArmInnerMounts.forEach((mount, index) => mount.position.set(...rearMounts[index]));
+    const trailingArmMounts = rearTrailingArmMountPoints(
+      rearMounts,
+      project.rearHub.trailingArmMountWidthMm,
+      project.rearHub.trailingArmMountHeightMm,
+      project.rearHub.trailingArmMountForwardOffsetMm,
+    );
+    this.rearTrailingArmMounts.forEach((mount, index) => mount.position.set(...trailingArmMounts[index]));
     const toeArmMounts = rearToeArmInnerMountPoints(
       rearMounts,
       project.rearSuspension.toeArmInnerMountWidthMm,
@@ -731,7 +744,12 @@ export class ChassisScene {
     this.renderer.domElement.removeEventListener("pointerleave", this.onPointerLeave);
     this.controls.dispose();
     this.renderer.dispose();
-    for (const pickup of [...this.pickups, ...this.rearMainArmInnerMounts, ...this.rearToeArmInnerMounts]) {
+    for (const pickup of [
+      ...this.pickups,
+      ...this.rearMainArmInnerMounts,
+      ...this.rearToeArmInnerMounts,
+      ...this.rearTrailingArmMounts,
+    ]) {
       pickup.geometry.dispose();
       pickup.material.dispose();
     }

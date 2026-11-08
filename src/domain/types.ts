@@ -63,4 +63,13 @@ export interface SuspensionProject {
     mainArmLengthMm: number;
     toeArmLengthMm: number;
   };
+  rearHub: {
+    mainArmOuterMountStaticHeightMm: number;
+    toeArmOuterMountOffsetMm: number;
+    toeArmOuterMountHeightMm: number;
+    trailingArmLengthMm: number;
+    trailingArmMountHeightMm: number;
+    trailingArmMountWidthMm: number;
+    trailingArmMountForwardOffsetMm: number;
+  };
 }

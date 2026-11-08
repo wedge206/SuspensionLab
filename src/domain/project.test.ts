@@ -124,3 +124,72 @@ describe("rear suspension toe arm dimensions", () => {
     );
   }
 });
+
+describe("rear hub dimensions", () => {
+  const project = () => createProjectFromTemplate("default", "Project", "project-id");
+  const dimensions = [
+    {
+      key: "mainArmOuterMountStaticHeightMm",
+      label: "Main arm outer mount static height",
+      defaultValue: 240,
+    },
+    {
+      key: "toeArmOuterMountOffsetMm",
+      label: "Toe arm outer mount offset",
+      defaultValue: 150,
+    },
+    {
+      key: "toeArmOuterMountHeightMm",
+      label: "Toe arm outer mount height",
+      defaultValue: 10,
+    },
+    { key: "trailingArmLengthMm", label: "Trailing arm length", defaultValue: 355 },
+    { key: "trailingArmMountHeightMm", label: "Trailing arm mount height", defaultValue: 308 },
+    { key: "trailingArmMountWidthMm", label: "Trailing arm mount width", defaultValue: 1100 },
+    {
+      key: "trailingArmMountForwardOffsetMm",
+      label: "Trailing arm mount forward offset",
+      defaultValue: 290,
+    },
+  ] as const;
+
+  it("defaults all rear hub dimensions for older projects", () => {
+    const value = project();
+    expect(validateProject({ ...value, rearHub: undefined }).rearHub).toEqual({
+      mainArmOuterMountStaticHeightMm: 240,
+      toeArmOuterMountOffsetMm: 150,
+      toeArmOuterMountHeightMm: 10,
+      trailingArmLengthMm: 355,
+      trailingArmMountHeightMm: 308,
+      trailingArmMountWidthMm: 1100,
+      trailingArmMountForwardOffsetMm: 290,
+    });
+  });
+
+  it.each(dimensions)("defaults an absent $key without changing the other dimensions", ({ key, defaultValue }) => {
+    const value = project();
+    value.rearHub.toeArmOuterMountOffsetMm = 155;
+    const { [key]: _omitted, ...remaining } = value.rearHub;
+    expect(validateProject({ ...value, rearHub: remaining }).rearHub)
+      .toEqual({ ...remaining, [key]: defaultValue });
+  });
+
+  it.each(dimensions)("preserves valid $key", ({ key }) => {
+    const value = project();
+    value.rearHub[key] = 123.5;
+    expect(validateProject(value).rearHub[key]).toBe(123.5);
+  });
+
+  for (const { key, label } of dimensions) {
+    it.each([0, -1, NaN, Infinity, null, "250"])(
+      `rejects invalid ${key}: %s`,
+      (dimension) => {
+        const value = project();
+        expect(() => validateProject({
+          ...value,
+          rearHub: { ...value.rearHub, [key]: dimension },
+        })).toThrow(`${label} must be a positive finite value.`);
+      },
+    );
+  }
+});

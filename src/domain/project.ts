@@ -98,6 +98,32 @@ export function validateProject(value: unknown): SuspensionProject {
   const toeArmLengthMm: unknown = rearSuspension.toeArmLengthMm === undefined
     ? 225
     : rearSuspension.toeArmLengthMm;
+  const rearHub = project.rearHub && typeof project.rearHub === "object"
+    ? project.rearHub as Record<string, unknown>
+    : {};
+  const mainArmOuterMountStaticHeightMm: unknown =
+    rearHub.mainArmOuterMountStaticHeightMm === undefined
+      ? 240
+      : rearHub.mainArmOuterMountStaticHeightMm;
+  const toeArmOuterMountOffsetMm: unknown = rearHub.toeArmOuterMountOffsetMm === undefined
+    ? 150
+    : rearHub.toeArmOuterMountOffsetMm;
+  const toeArmOuterMountHeightMm: unknown = rearHub.toeArmOuterMountHeightMm === undefined
+    ? 10
+    : rearHub.toeArmOuterMountHeightMm;
+  const trailingArmLengthMm: unknown = rearHub.trailingArmLengthMm === undefined
+    ? 355
+    : rearHub.trailingArmLengthMm;
+  const trailingArmMountHeightMm: unknown = rearHub.trailingArmMountHeightMm === undefined
+    ? 308
+    : rearHub.trailingArmMountHeightMm;
+  const trailingArmMountWidthMm: unknown = rearHub.trailingArmMountWidthMm === undefined
+    ? 1100
+    : rearHub.trailingArmMountWidthMm;
+  const trailingArmMountForwardOffsetMm: unknown =
+    rearHub.trailingArmMountForwardOffsetMm === undefined
+      ? 290
+      : rearHub.trailingArmMountForwardOffsetMm;
   if (typeof widthMm !== "number" || !Number.isFinite(widthMm) || widthMm <= 0 ||
       typeof rearWidthMm !== "number" || !Number.isFinite(rearWidthMm) || rearWidthMm <= 0 ||
       typeof controlArmDepthMm !== "number" || !Number.isFinite(controlArmDepthMm) || controlArmDepthMm <= 0 ||
@@ -184,6 +210,34 @@ export function validateProject(value: unknown): SuspensionProject {
       !Number.isFinite(toeArmLengthMm) || toeArmLengthMm <= 0) {
     throw new Error("Rear toe arm length must be a positive finite value.");
   }
+  if (typeof mainArmOuterMountStaticHeightMm !== "number" ||
+      !Number.isFinite(mainArmOuterMountStaticHeightMm) || mainArmOuterMountStaticHeightMm <= 0) {
+    throw new Error("Main arm outer mount static height must be a positive finite value.");
+  }
+  if (typeof toeArmOuterMountOffsetMm !== "number" ||
+      !Number.isFinite(toeArmOuterMountOffsetMm) || toeArmOuterMountOffsetMm <= 0) {
+    throw new Error("Toe arm outer mount offset must be a positive finite value.");
+  }
+  if (typeof toeArmOuterMountHeightMm !== "number" ||
+      !Number.isFinite(toeArmOuterMountHeightMm) || toeArmOuterMountHeightMm <= 0) {
+    throw new Error("Toe arm outer mount height must be a positive finite value.");
+  }
+  if (typeof trailingArmLengthMm !== "number" ||
+      !Number.isFinite(trailingArmLengthMm) || trailingArmLengthMm <= 0) {
+    throw new Error("Trailing arm length must be a positive finite value.");
+  }
+  if (typeof trailingArmMountHeightMm !== "number" ||
+      !Number.isFinite(trailingArmMountHeightMm) || trailingArmMountHeightMm <= 0) {
+    throw new Error("Trailing arm mount height must be a positive finite value.");
+  }
+  if (typeof trailingArmMountWidthMm !== "number" ||
+      !Number.isFinite(trailingArmMountWidthMm) || trailingArmMountWidthMm <= 0) {
+    throw new Error("Trailing arm mount width must be a positive finite value.");
+  }
+  if (typeof trailingArmMountForwardOffsetMm !== "number" ||
+      !Number.isFinite(trailingArmMountForwardOffsetMm) || trailingArmMountForwardOffsetMm <= 0) {
+    throw new Error("Trailing arm mount forward offset must be a positive finite value.");
+  }
   return {
     id: project.id,
     name: project.name,
@@ -238,6 +292,15 @@ export function validateProject(value: unknown): SuspensionProject {
       toeArmMainArmWidthMm,
       mainArmLengthMm,
       toeArmLengthMm,
+    },
+    rearHub: {
+      mainArmOuterMountStaticHeightMm,
+      toeArmOuterMountOffsetMm,
+      toeArmOuterMountHeightMm,
+      trailingArmLengthMm,
+      trailingArmMountHeightMm,
+      trailingArmMountWidthMm,
+      trailingArmMountForwardOffsetMm,
     },
   };
 }

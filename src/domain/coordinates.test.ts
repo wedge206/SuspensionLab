@@ -6,6 +6,7 @@ import {
   hubFacePoints,
   orientHubPoint,
   rearMainArmInnerMountPoints,
+  rearTrailingArmMountPoints,
   rearToeArmInnerMountPoints,
   steeringKnucklePivotPoints,
   steeringRackPivotPoints,
@@ -64,6 +65,23 @@ describe("front lower control arm pickup points", () => {
         expect(toe[0][1] - toe[1][1]).toBe(930);
         expect(toe[0][0] - rear[0][0]).toBe(215);
         expect(toe[1][0] - rear[1][0]).toBe(215);
+      });
+    });
+
+    describe("rear trailing arm mount points", () => {
+      it("places the mirrored pair forward of the main arm mounts at the configured width and height", () => {
+        const rear = rearMainArmInnerMountPoints(1900, 725, 250);
+        const trailing = rearTrailingArmMountPoints(rear, 1100, 308, 290);
+        expect(trailing).toEqual([[-960, 550, 308], [-960, -550, 308]]);
+        expect(trailing[0][0] - rear[0][0]).toBe(290);
+        expect(trailing[1][0] - rear[1][0]).toBe(290);
+        expect(trailing[0][1] - trailing[1][1]).toBe(1100);
+      });
+
+      it("follows the rear main arm mount station while keeping its own spacing and height", () => {
+        const rear = rearMainArmInnerMountPoints(1720, 700, 330);
+        const trailing = rearTrailingArmMountPoints(rear, 980, 315, 275);
+        expect(trailing).toEqual([[-795, 490, 315], [-795, -490, 315]]);
       });
     });
 
@@ -566,6 +584,15 @@ describe("front lower control arm pickup points", () => {
         mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
         toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
         mainArmLengthMm: 420, toeArmLengthMm: 225,
+      },
+      rearHub: {
+        mainArmOuterMountStaticHeightMm: 240,
+        toeArmOuterMountOffsetMm: 150,
+        toeArmOuterMountHeightMm: 10,
+        trailingArmLengthMm: 355,
+        trailingArmMountHeightMm: 308,
+        trailingArmMountWidthMm: 1100,
+        trailingArmMountForwardOffsetMm: 290,
       },
     };
 

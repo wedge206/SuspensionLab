@@ -63,7 +63,7 @@ describe("built-in project templates", () => {
       suspension: { springRateNPerMm: 50 },
       rearSuspension: {
         camberArmInnerMountHeightMm: 97,
-        camberArmInnerMountForwardOffsetMm: 250,
+        camberArmInnerMountForwardOffsetMm: 189,
         camberArmInnerMountWidthMm: 660,
         mainArmInnerMountWidthMm: 400, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
         toeArmInnerMountWidthMm: 685, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,

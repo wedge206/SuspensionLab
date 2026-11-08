@@ -54,10 +54,12 @@ describe("front lower control arm pickup points", () => {
   });
 
   it("translates both rack pivots together without changing their spacing", () => {
-    expect(steeringRackPivotPoints(850, 362, 166, 165)).toEqual([
+    const points = steeringRackPivotPoints(850, 362, 166, 165);
+    expect(points).toEqual([
       [484, 590, 362],
-      [484, 140, 362],
+      [484, -260, 362],
     ]);
+    expect(points[0][1] - points[1][1]).toBe(850);
   });
 
   it("limits rack travel to the housing clearance less the steering limiter", () => {
@@ -82,7 +84,7 @@ describe("front lower control arm pickup points", () => {
       130,
       -10,
       -89,
-      10,
+      -10,
       tieRodLength,
       450,
       650,
@@ -95,9 +97,8 @@ describe("front lower control arm pickup points", () => {
         .toBeCloseTo(distance(neutralStrutMounts[side], movedArm.ballJoint[side]));
       expect(distance(knuckle.steeringPivots[side], knuckle.strutMounts[side]))
         .toBeCloseTo(distance(neutralSteeringPivots[side], neutralStrutMounts[side]));
-      expect(knuckle.strutLengths[side]).toBeGreaterThanOrEqual(450);
-      expect(knuckle.strutLengths[side]).toBeLessThanOrEqual(650);
-      const direction: [number, number, number] = [0, side === 0 ? Math.sin(Math.PI / 18) : -Math.sin(Math.PI / 18), Math.cos(Math.PI / 18)];
+      expect(knuckle.strutLengths[side]).toBeCloseTo(distance(knuckle.strutMounts[side], topMounts[side]));
+      const direction: [number, number, number] = [0, side === 0 ? -Math.sin(Math.PI / 18) : Math.sin(Math.PI / 18), Math.cos(Math.PI / 18)];
       const localPoint: [number, number, number] = [
         neutralStrutMounts[side][0] + direction[0] * 100,
         neutralStrutMounts[side][1] + direction[1] * 100,
@@ -117,6 +118,36 @@ describe("front lower control arm pickup points", () => {
     expect(knuckle.strutMounts[0]).not.toEqual(
       strutMountPoints(movedArm.ballJoint, 130, -10, -89)[0],
     );
+  });
+
+  it("reports the actual strut length even when it exceeds the travel limit", () => {
+    const ballJoints: [[number, number, number], [number, number, number]] =
+      [[638, 785, 250], [638, -785, 250]];
+    const topMounts = frontTopMountPoints(950, 900, 10);
+    const knuckle = tieRodConstrainedKnucklePoints(
+      ballJoints,
+      steeringRackPivotPoints(850, 362, 166),
+      topMounts,
+      125,
+      210,
+      -24,
+      130,
+      -10,
+      -89,
+      -10,
+      341,
+      450,
+      500,
+    );
+
+    for (let side = 0; side < 2; side += 1) {
+      expect(knuckle.strutLengths[side]).toBeGreaterThan(500);
+      expect(knuckle.strutLengths[side]).toBeCloseTo(Math.hypot(
+        topMounts[side][0] - knuckle.strutMounts[side][0],
+        topMounts[side][1] - knuckle.strutMounts[side][1],
+        topMounts[side][2] - knuckle.strutMounts[side][2],
+      ));
+    }
   });
 
   it("satisfies rack travel while retaining rigid hub dimensions", () => {
@@ -438,7 +469,8 @@ describe("front lower control arm pickup points", () => {
     );
 
     expect(measurements.motionRatio).toEqual([0.8, 1.2]);
-    expect(measurements.wheelRateNPerMm).toEqual([32, 72]);
+    expect(measurements.wheelRateNPerMm[0]).toBeCloseTo(32);
+    expect(measurements.wheelRateNPerMm[1]).toBeCloseTo(72);
   });
 
   it("calculates the local motion ratio from suspension geometry", () => {
@@ -511,8 +543,8 @@ describe("front lower control arm pickup points", () => {
     expect(measurements.toeMm?.[0]).toBeCloseTo(0.2 / 0.98 * 634.5);
     expect(measurements.toeMm?.[1]).toBeCloseTo(0.2 / 0.98 * 634.5);
     expect(measurements.totalToeMm).toBeCloseTo(2 * 0.2 / 0.98 * 634.5);
-    expect(measurements.camberDeg[0]).toBe(0);
-    expect(measurements.camberDeg[1]).not.toBe(0);
+    expect(measurements.camberDeg[0]).toBeCloseTo(0);
+    expect(measurements.camberDeg[1]).toBeCloseTo(Math.asin(0.1) * 180 / Math.PI);
   });
 
   it("rotates the ball joint about its two inner pivots without changing triangle side lengths", () => {

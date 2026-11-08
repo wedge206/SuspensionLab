@@ -265,9 +265,21 @@ export class ChassisScene {
     this.scene.add(key);
 
     this.scene.add(this.createGroundGrid());
+    const initialRearMounts = rearMainArmInnerMountPoints(
+      initialProject.rearSuspension.frontToRearLengthMm,
+      initialProject.rearSuspension.mainArmInnerMountWidthMm,
+      initialProject.rearSuspension.mainArmInnerMountHeightMm,
+    );
+    const initialToeArmMounts = rearToeArmInnerMountPoints(
+      initialRearMounts,
+      initialProject.rearSuspension.toeArmInnerMountWidthMm,
+      initialProject.rearSuspension.toeArmInnerMountHeightMm,
+      initialProject.rearSuspension.toeArmMainArmWidthMm,
+    );
     this.frame = this.createFrame(
       initialProject.frontLowerControlArmPickup.controlArmDepthMm,
       initialProject.frontLowerControlArmPickup.frontHeightMm,
+      [initialRearMounts[0][0], initialToeArmMounts[0][0]],
     );
     this.scene.add(this.frame);
     this.scene.add(
@@ -654,7 +666,11 @@ export class ChassisScene {
       new THREE.Vector3(...steeringPivots[1]),
     ]);
     this.tieRods.geometry.computeBoundingSphere();
-    this.frame.geometry.setFromPoints(this.framePoints(controlArmDepthMm, frontHeightMm));
+    this.frame.geometry.setFromPoints(this.framePoints(
+      controlArmDepthMm,
+      frontHeightMm,
+      [rearMounts[0][0], toeArmMounts[0][0]],
+    ));
     this.frame.geometry.computeBoundingSphere();
     this.controlArmFirstSides.geometry.setFromPoints([
       new THREE.Vector3(...points.front[0]),
@@ -1099,9 +1115,13 @@ export class ChassisScene {
     return group;
   }
 
-  private createFrame(controlArmDepthMm: number, frontMountHeightMm: number): THREE.LineSegments {
+  private createFrame(
+    controlArmDepthMm: number,
+    frontMountHeightMm: number,
+    rearArmStations: [number, number],
+  ): THREE.LineSegments {
     const geometry = new THREE.BufferGeometry().setFromPoints(
-      this.framePoints(controlArmDepthMm, frontMountHeightMm),
+      this.framePoints(controlArmDepthMm, frontMountHeightMm, rearArmStations),
     );
     return new THREE.LineSegments(
       geometry,
@@ -1109,8 +1129,13 @@ export class ChassisScene {
     );
   }
 
-  private framePoints(controlArmDepthMm: number, frontMountHeightMm: number): THREE.Vector3[] {
-    const x0 = -FRAME_HALF_LENGTH, x1 = FRAME_HALF_LENGTH;
+  private framePoints(
+    controlArmDepthMm: number,
+    frontMountHeightMm: number,
+    [rearMainArmX, rearToeArmX]: [number, number],
+  ): THREE.Vector3[] {
+    const frontOverhang = FRAME_HALF_LENGTH - FRONT_PICKUP_STATION_MM;
+    const x0 = rearMainArmX - frontOverhang, x1 = FRAME_HALF_LENGTH;
     const y0 = -FRAME_HALF_WIDTH, y1 = FRAME_HALF_WIDTH;
     const z = frontMountHeightMm;
     const points = [
@@ -1122,6 +1147,8 @@ export class ChassisScene {
       [FRONT_PICKUP_STATION_MM, y0, z], [FRONT_PICKUP_STATION_MM, y1, z],
       [FRONT_PICKUP_STATION_MM - controlArmDepthMm, y0, z],
       [FRONT_PICKUP_STATION_MM - controlArmDepthMm, y1, z],
+      [rearMainArmX, y0, z], [rearMainArmX, y1, z],
+      [rearToeArmX, y0, z], [rearToeArmX, y1, z],
     ].map(([x, y, height]) => new THREE.Vector3(x, y, height));
     return points;
   }

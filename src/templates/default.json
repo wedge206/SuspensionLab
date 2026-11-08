@@ -84,6 +84,8 @@
     "trailingArmLengthMm": 470,
     "trailingArmMountHeightMm": 308,
     "trailingArmMountWidthMm": 1040,
-    "trailingArmMountForwardOffsetMm": 460
+    "trailingArmMountForwardOffsetMm": 460,
+    "trailingArmLateralOffsetMm": 0,
+    "trailingArmHeightMm": 10
   }
 }

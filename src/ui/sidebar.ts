@@ -55,6 +55,10 @@ export function renderRearSidebar(): string {
               <div class="geometry-heading"><h2>Rear Hub</h2><span>Outer arm mounts</span></div>
               ${renderFieldGroup("rear-1")}
             </section>
+            <section class="build-sequence">
+              <div class="geometry-heading"><h2>Rear Trailing Arm</h2><span>Mount dimensions</span></div>
+              ${renderFieldGroup("rear-2")}
+            </section>
           </div>
 `;
 }

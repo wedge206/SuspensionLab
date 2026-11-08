@@ -69,6 +69,20 @@ describe("UI composition", () => {
             expect(page).toContain(`<input id="${id}" type="number"${min === undefined ? "" : ` min="${min}"`} step="${step}" /> <small>${unit}</small>`);
         }
     });
+
+    it("places trailing arm dimensions in the rear trailing arm section", () => {
+        const sidebar = renderSidebar();
+        const rearHub = sidebar.split("<h2>Rear Hub</h2>")[1].split("</section>")[0];
+        const trailingArm = sidebar.split("<h2>Rear Trailing Arm</h2>")[1].split("</section>")[0];
+        for (const id of [
+            "rear-trailing-arm-length", "rear-trailing-arm-mount-height",
+            "rear-trailing-arm-mount-width", "rear-trailing-arm-mount-forward-offset", "rear-trailing-arm-lateral-offset",
+            "rear-trailing-arm-height",
+        ]) {
+            expect(rearHub).not.toContain(`id="${id}"`);
+            expect(trailingArm).toContain(`id="${id}"`);
+        }
+    });
 });
 
 describe("UI bindings", () => {
@@ -210,6 +224,34 @@ describe("UI bindings", () => {
             input.value = String(value);
             input.dispatchEvent(new Event("change"));
             expect(state.current.rearHub.camberArmOuterMountLateralOffsetMm).toBe(value);
+        }
+        expect(persist).toHaveBeenCalledTimes(2);
+        expect(renderers.showNotice).not.toHaveBeenCalled();
+    });
+
+    it("accepts positive and negative trailing arm lateral offsets", () => {
+        const state = makeState();
+        const persist = vi.fn(() => true);
+        bindInputs(state, getUiElements(), renderers, persist);
+        const input = getNode("#rear-trailing-arm-lateral-offset");
+        for (const value of [-30, 30]) {
+            input.value = String(value);
+            input.dispatchEvent(new Event("change"));
+            expect(state.current.rearHub.trailingArmLateralOffsetMm).toBe(value);
+        }
+        expect(persist).toHaveBeenCalledTimes(2);
+        expect(renderers.showNotice).not.toHaveBeenCalled();
+    });
+
+    it("accepts positive and negative trailing arm heights", () => {
+        const state = makeState();
+        const persist = vi.fn(() => true);
+        bindInputs(state, getUiElements(), renderers, persist);
+        const input = getNode("#rear-trailing-arm-height");
+        for (const value of [-30, 30]) {
+            input.value = String(value);
+            input.dispatchEvent(new Event("change"));
+            expect(state.current.rearHub.trailingArmHeightMm).toBe(value);
         }
         expect(persist).toHaveBeenCalledTimes(2);
         expect(renderers.showNotice).not.toHaveBeenCalled();

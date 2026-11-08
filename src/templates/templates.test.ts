@@ -86,6 +86,8 @@ describe("built-in project templates", () => {
                 trailingArmMountHeightMm: 308,
                 trailingArmMountWidthMm: 1040,
                 trailingArmMountForwardOffsetMm: 460,
+                trailingArmLateralOffsetMm: 0,
+                trailingArmHeightMm: 10,
             },
         });
     });

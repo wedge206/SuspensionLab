@@ -1,6 +1,6 @@
 export type FieldConstraint = "positive" | "nonNegative" | "finite";
 export type FieldGroup = "front-0" | "front-1" | "front-2" | "front-3" | "front-4" | "front-5" |
-    "rear-0" | "rear-1";
+    "rear-0" | "rear-1" | "rear-2";
 
 export interface FieldUi {
     id: string;
@@ -688,7 +688,7 @@ export const projectFields = {
         trailingArmLengthMm: {constraint: "positive",
             ui: {
                 id: "rear-trailing-arm-length",
-                group: "rear-1",
+                group: "rear-2",
                 order: 51,
                 label: "Trailing Arm Length",
                 hint: "Sets the static main arm outer mount reference",
@@ -700,7 +700,7 @@ export const projectFields = {
         trailingArmMountHeightMm: {constraint: "positive",
             ui: {
                 id: "rear-trailing-arm-mount-height",
-                group: "rear-1",
+                group: "rear-2",
                 order: 52,
                 label: "Trailing Arm Mount Height",
                 hint: "Height above the ground plane",
@@ -712,7 +712,7 @@ export const projectFields = {
         trailingArmMountWidthMm: {constraint: "positive",
             ui: {
                 id: "rear-trailing-arm-mount-width",
-                group: "rear-1",
+                group: "rear-2",
                 order: 53,
                 label: "Trailing Arm Mount Width",
                 hint: "Distance between left and right mounts",
@@ -724,12 +724,34 @@ export const projectFields = {
         trailingArmMountForwardOffsetMm: {constraint: "positive",
             ui: {
                 id: "rear-trailing-arm-mount-forward-offset",
-                group: "rear-1",
+                group: "rear-2",
                 order: 54,
                 label: "Trailing Arm Mount Forward Offset",
                 hint: "Forward offset from the rear hub",
                 unit: "mm",
                 min: "1",
+                step: "1"
+            }
+        },
+        trailingArmLateralOffsetMm: {constraint: "finite",
+            ui: {
+                id: "rear-trailing-arm-lateral-offset",
+                group: "rear-2",
+                order: 55,
+                label: "Trailing Arm Lateral Offset",
+                hint: "Signed lateral offset",
+                unit: "mm",
+                step: "1"
+            }
+        },
+        trailingArmHeightMm: {constraint: "finite",
+            ui: {
+                id: "rear-trailing-arm-height",
+                group: "rear-2",
+                order: 56,
+                label: "Trailing Arm Height",
+                hint: "Signed vertical offset",
+                unit: "mm",
                 step: "1"
             }
         },

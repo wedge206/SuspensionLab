@@ -40,6 +40,7 @@ export interface SuspensionProject {
     strutMountAngleDeg: number;
     strutMaxLengthMm: number;
     strutMinLengthMm: number;
+    strutStaticLengthMm: number;
     hubHeightMm: number;
     hubSpacingMm: number;
   };

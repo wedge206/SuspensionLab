@@ -551,6 +551,7 @@ describe("front lower control arm pickup points", () => {
         strutMountAngleDeg: 20,
         strutMaxLengthMm: 650,
         strutMinLengthMm: 450,
+        strutStaticLengthMm: 580,
         hubHeightMm: 60,
         hubSpacingMm: 94,
       },

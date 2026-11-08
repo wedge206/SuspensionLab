@@ -57,6 +57,9 @@ export function validateProject(value: unknown): SuspensionProject {
   const strutMountAngleDeg: unknown = wheelKnuckle.strutMountAngleDeg;
   const strutMaxLengthMm: unknown = wheelKnuckle.strutMaxLengthMm;
   const strutMinLengthMm: unknown = wheelKnuckle.strutMinLengthMm;
+  const strutStaticLengthMm: unknown = wheelKnuckle.strutStaticLengthMm === undefined
+    ? 580
+    : wheelKnuckle.strutStaticLengthMm;
   const hubHeightMm: unknown = wheelKnuckle.hubHeightMm;
   const hubSpacingMm: unknown = wheelKnuckle.hubSpacingMm;
   const wheelTire = project.wheelTire && typeof project.wheelTire === "object"
@@ -135,6 +138,7 @@ export function validateProject(value: unknown): SuspensionProject {
       typeof strutMaxLengthMm !== "number" || !Number.isFinite(strutMaxLengthMm) || strutMaxLengthMm <= 0 ||
       typeof strutMinLengthMm !== "number" || !Number.isFinite(strutMinLengthMm) || strutMinLengthMm <= 0 ||
       strutMinLengthMm >= strutMaxLengthMm ||
+      typeof strutStaticLengthMm !== "number" || !Number.isFinite(strutStaticLengthMm) || strutStaticLengthMm <= 0 ||
       typeof hubHeightMm !== "number" || !Number.isFinite(hubHeightMm) || hubHeightMm <= 0 ||
       typeof hubSpacingMm !== "number" || !Number.isFinite(hubSpacingMm) || hubSpacingMm <= 0) {
     throw new Error("Strut mount angle must be finite; strut lengths and hub dimensions must be positive finite values, with minimum strut length below maximum.");
@@ -214,6 +218,7 @@ export function validateProject(value: unknown): SuspensionProject {
       strutMountAngleDeg: Math.abs(strutMountAngleDeg),
       strutMaxLengthMm,
       strutMinLengthMm,
+      strutStaticLengthMm,
       hubHeightMm,
       hubSpacingMm,
     },

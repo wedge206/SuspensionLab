@@ -1,4 +1,5 @@
 import { validateProject } from "../domain/project";
+import { withStaticStrutLength } from "../domain/coordinates";
 import type { SuspensionProject } from "../domain/types";
 
 export const DEFAULT_TEMPLATE_KEY = "default";
@@ -44,7 +45,7 @@ export function createProjectFromTemplate(
   id: string = crypto.randomUUID(),
 ): SuspensionProject {
   const template = getProjectTemplate(key);
-  return { ...structuredClone(template.project), id, name };
+  return withStaticStrutLength({ ...structuredClone(template.project), id, name });
 }
 
 export function resetProjectToTemplate(
@@ -52,5 +53,7 @@ export function resetProjectToTemplate(
   key: string,
 ): SuspensionProject {
   const template = getProjectTemplate(key);
-  return { ...structuredClone(template.project), id: project.id, name: project.name };
+  const reset = { ...structuredClone(template.project), id: project.id, name: project.name };
+  reset.wheelKnuckle.strutStaticLengthMm = project.wheelKnuckle.strutStaticLengthMm;
+  return withStaticStrutLength(reset);
 }

@@ -7,7 +7,7 @@ import {
   listProjectTemplates,
   resetProjectToTemplate,
 } from "./templates/templates";
-import { steeringRackTravelLimitMm } from "./domain/coordinates";
+import { steeringRackTravelLimitMm, withStaticStrutLength } from "./domain/coordinates";
 import type { ChassisScene } from "./viewer/scene";
 import "./style.css";
 
@@ -56,7 +56,7 @@ app.innerHTML = `
       <button class="button button-quiet" id="delete-project">Delete</button>
     </div>
     <div class="topbar-actions">
-      <button class="button button-quiet" id="reset-project" title="Reset this project to its original template">Reset</button>
+      <button class="button button-quiet" id="reset-project" title="Reset to the template, preserving Strut Static Length">Reset</button>
       <button class="button button-quiet" id="import-project">Import JSON</button>
       <button class="button button-primary" id="export-project">Export JSON</button>
       <input id="import-file" class="sr-only" type="file" accept="application/json,.json" />
@@ -200,6 +200,10 @@ app.innerHTML = `
         <label class="dimension-field" for="strut-min-length">
           <span><strong>Strut Min Length</strong><small>Minimum distance between strut mount and top mount</small></span>
           <span class="dimension-input"><input id="strut-min-length" type="number" min="1" step="1" /> <small>mm</small></span>
+        </label>
+        <label class="dimension-field" for="strut-static-length">
+          <span><strong>Strut Static Length</strong><small>Initial and reset strut length</small></span>
+          <span class="dimension-input"><input id="strut-static-length" type="number" min="1" step="1" /> <small>mm</small></span>
         </label>
         <label class="dimension-field" for="hub-height">
           <span><strong>Hub Height</strong><small>Distance along the strut-side hub-face edge</small></span>
@@ -374,6 +378,7 @@ const strutMountLocationInput = document.querySelector<HTMLInputElement>("#strut
 const strutMountAngleInput = document.querySelector<HTMLInputElement>("#strut-mount-angle")!;
 const strutMaxLengthInput = document.querySelector<HTMLInputElement>("#strut-max-length")!;
 const strutMinLengthInput = document.querySelector<HTMLInputElement>("#strut-min-length")!;
+const strutStaticLengthInput = document.querySelector<HTMLInputElement>("#strut-static-length")!;
 const hubHeightInput = document.querySelector<HTMLInputElement>("#hub-height")!;
 const hubSpacingInput = document.querySelector<HTMLInputElement>("#hub-spacing")!;
 const wheelOffsetInput = document.querySelector<HTMLInputElement>("#wheel-offset")!;
@@ -467,6 +472,7 @@ function renderGeometry(): void {
   strutMountAngleInput.value = String(current.wheelKnuckle.strutMountAngleDeg);
   strutMaxLengthInput.value = String(current.wheelKnuckle.strutMaxLengthMm);
   strutMinLengthInput.value = String(current.wheelKnuckle.strutMinLengthMm);
+  strutStaticLengthInput.value = String(current.wheelKnuckle.strutStaticLengthMm);
   hubHeightInput.value = String(current.wheelKnuckle.hubHeightMm);
   hubSpacingInput.value = String(current.wheelKnuckle.hubSpacingMm);
   wheelOffsetInput.value = String(current.wheelTire.wheelOffsetMm);
@@ -576,12 +582,16 @@ function renderAlignmentMeasurements(measurements: WheelAlignmentMeasurements | 
 projectSelect.addEventListener("change", () => selectProject(projectSelect.value));
 
 document.querySelector<HTMLButtonElement>("#reset-project")!.addEventListener("click", () => {
-  current = resetProjectToTemplate(
-    current,
-    projectTemplateKeys[current.id] ?? DEFAULT_TEMPLATE_KEY,
-  );
-  renderGeometry();
-  if (persistOrNotify()) showNotice("Project dimensions reset to their template values.");
+  try {
+    current = resetProjectToTemplate(
+      current,
+      projectTemplateKeys[current.id] ?? DEFAULT_TEMPLATE_KEY,
+    );
+    renderGeometry();
+    if (persistOrNotify()) showNotice("Project reset to template values, preserving Strut Static Length.");
+  } catch (error) {
+    showNotice(error instanceof Error ? error.message : "Could not reset the project.", "error");
+  }
 });
 
 widthInput.addEventListener("change", () => updateDimension("widthMm", widthInput));
@@ -609,6 +619,25 @@ strutMountLocationInput.addEventListener("change", () => updateWheelKnuckleDimen
 strutMountAngleInput.addEventListener("change", () => updateWheelKnuckleDimension("strutMountAngleDeg", strutMountAngleInput));
 strutMaxLengthInput.addEventListener("change", () => updateWheelKnuckleDimension("strutMaxLengthMm", strutMaxLengthInput));
 strutMinLengthInput.addEventListener("change", () => updateWheelKnuckleDimension("strutMinLengthMm", strutMinLengthInput));
+strutStaticLengthInput.addEventListener("change", () => {
+  const value = Number(strutStaticLengthInput.value);
+  if (!Number.isFinite(value) || value <= 0) {
+    showNotice("Strut Static Length must be a positive finite number.", "error");
+    renderGeometry();
+    return;
+  }
+  try {
+    current = withStaticStrutLength({
+      ...current,
+      wheelKnuckle: { ...current.wheelKnuckle, strutStaticLengthMm: value },
+    });
+    renderGeometry();
+    persistOrNotify();
+  } catch (error) {
+    showNotice(error instanceof Error ? error.message : "Could not set Strut Static Length.", "error");
+    renderGeometry();
+  }
+});
 hubHeightInput.addEventListener("change", () => updateWheelKnuckleDimension("hubHeightMm", hubHeightInput));
 hubSpacingInput.addEventListener("change", () => updateWheelKnuckleDimension("hubSpacingMm", hubSpacingInput));
 wheelOffsetInput.addEventListener("change", () => updateWheelTireDimension("wheelOffsetMm", wheelOffsetInput));

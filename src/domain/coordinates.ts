@@ -354,6 +354,81 @@ export function frontTopMountPoints(
   ];
 }
 
+export function withStaticStrutLength(project: SuspensionProject): SuspensionProject {
+  const { frontLowerControlArmPickup: pickup, frontControlArm: arm, wheelKnuckle: knuckle } = project;
+  const length = knuckle.strutStaticLengthMm;
+  if (length < knuckle.strutMinLengthMm || length > knuckle.strutMaxLengthMm) {
+    throw new Error("Strut Static Length must be within the strut travel limits.");
+  }
+  const points = controlArmPickupPoints(
+    pickup.widthMm, pickup.rearWidthMm, pickup.frontHeightMm, pickup.rearHeightMm,
+    pickup.controlArmDepthMm, arm.lengthMm, arm.ballJointOffsetMm,
+  );
+  const tops = frontTopMountPoints(
+    project.frontTopMount.widthMm, project.frontTopMount.heightMm, project.frontTopMount.offsetMm,
+  );
+  const rack = steeringRackPivotPoints(
+    project.steeringRack.widthMm, project.steeringRack.centerlineHeightMm,
+    project.steeringRack.centerlineOffsetMm, project.steeringRack.rackTravelMm,
+  );
+  const angle = -knuckle.strutMountAngleDeg * Math.PI / 180;
+  const targetDistanceSquared =
+    knuckle.strutMountOffsetMm ** 2 +
+    (knuckle.strutMountLocationMm + Math.sin(angle) * length) ** 2 +
+    (knuckle.strutMountHeightMm + Math.cos(angle) * length) ** 2;
+  // The squared distance from a rotating ball joint to its top mount is sinusoidal in arm angle.
+  const rotations = ([0, 1] as const).map((side) => {
+    const distanceSquared = (rotation: number): number => {
+      const joint = rotatePointAroundAxis(points.ballJoint[side], points.front[side], points.rear[side], rotation);
+      return joint.reduce((sum, coordinate, index) => sum + (coordinate - tops[side][index]) ** 2, 0);
+    };
+    const zero = distanceSquared(0);
+    const halfTurn = distanceSquared(Math.PI);
+    const center = (zero + halfTurn) / 2;
+    const cosine = (zero - halfTurn) / 2;
+    const sine = distanceSquared(Math.PI / 2) - center;
+    const amplitude = Math.hypot(cosine, sine);
+    if (amplitude < 1e-9) {
+      if (Math.abs(targetDistanceSquared - center) > 1e-7) return [];
+      const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
+      return Math.abs(currentAngle) <= Math.PI / 2 ? [currentAngle] : [0];
+    }
+    if (Math.abs(targetDistanceSquared - center) > amplitude + 1e-7) return [];
+    const phase = Math.atan2(sine, cosine);
+    const offset = Math.acos(Math.max(-1, Math.min(1, (targetDistanceSquared - center) / amplitude)));
+    const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
+    return [phase + offset, phase - offset]
+      .map((candidate) => Math.atan2(Math.sin(candidate), Math.cos(candidate)))
+      .filter((candidate) => Math.abs(candidate) <= Math.PI / 2 + 1e-10)
+      .sort((a, b) => Math.abs(a - currentAngle) - Math.abs(b - currentAngle));
+  });
+  for (const left of rotations[0]) {
+    for (const right of rotations[1]) {
+      const joints = controlArmPickupPoints(
+        pickup.widthMm, pickup.rearWidthMm, pickup.frontHeightMm, pickup.rearHeightMm,
+        pickup.controlArmDepthMm, arm.lengthMm, arm.ballJointOffsetMm, left, right,
+      ).ballJoint;
+      try {
+        const result = tieRodConstrainedKnucklePoints(
+          joints, rack, tops, knuckle.steeringPivotHeightMm, knuckle.steeringPivotDepthMm,
+          knuckle.steeringPivotOffsetMm, knuckle.strutMountHeightMm, knuckle.strutMountOffsetMm,
+          knuckle.strutMountLocationMm, -knuckle.strutMountAngleDeg, project.steeringRack.tieRodLengthMm,
+          knuckle.strutMinLengthMm, knuckle.strutMaxLengthMm,
+        );
+        if (result.strutLengths.every((actual) => Math.abs(actual - length) < 1e-6)) {
+          return { ...project, frontControlArm: { ...arm, leftRotationRad: left, rightRotationRad: right } };
+        }
+      } catch (error) {
+        if (!(error instanceof Error) || ![
+          "Tie Rod Length cannot be satisfied at the current ball joint position.",
+          "Strut angle cannot reach the fixed top mount.",
+        ].includes(error.message)) throw error;
+      }
+    }
+  }
+  throw new Error("Strut Static Length cannot be reached with the current suspension geometry and tie rod constraints.");
+}
+
 export function strutLengthsMm(
   strutMounts: [Vec3, Vec3],
   topMounts: [Vec3, Vec3],

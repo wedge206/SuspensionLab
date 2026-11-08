@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  controlArmPickupPoints, frontTopMountPoints, steeringRackPivotPoints,
+  tieRodConstrainedKnucklePoints, withStaticStrutLength,
+} from "../domain/coordinates";
+import type { SuspensionProject } from "../domain/types";
+import {
   createProjectFromTemplate,
   DEFAULT_TEMPLATE_KEY,
   listProjectTemplates,
@@ -22,8 +27,8 @@ describe("built-in project templates", () => {
       frontControlArm: {
         lengthMm: 320,
         ballJointOffsetMm: 12,
-        leftRotationRad: 0,
-        rightRotationRad: 0,
+        leftRotationRad: expect.any(Number),
+        rightRotationRad: expect.any(Number),
       },
       steeringRack: {
         widthMm: 850,
@@ -45,6 +50,7 @@ describe("built-in project templates", () => {
         strutMountAngleDeg: 20,
         strutMaxLengthMm: 650,
         strutMinLengthMm: 450,
+        strutStaticLengthMm: 580,
         hubHeightMm: 60,
         hubSpacingMm: 94,
       },
@@ -56,8 +62,8 @@ describe("built-in project templates", () => {
       },
       suspension: { springRateNPerMm: 50 },
       rearSuspension: {
-        mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
-        toeArmInnerMountWidthMm: 1000, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
+        mainArmInnerMountWidthMm: 725, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
+        toeArmInnerMountWidthMm: 1100, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
         mainArmLengthMm: 420, toeArmLengthMm: 225,
       },
     });
@@ -79,9 +85,57 @@ describe("built-in project templates", () => {
       frontLowerControlArmPickup: { widthMm: 465 },
       rearSuspension: {
         mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
-        toeArmInnerMountWidthMm: 1000, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
+        toeArmInnerMountWidthMm: 1100, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
         mainArmLengthMm: 420, toeArmLengthMm: 225,
       },
+    });
+  });
+
+  function measuredStrutLengths(project: SuspensionProject): [number, number] {
+    const p = project.frontLowerControlArmPickup;
+    const a = project.frontControlArm;
+    const k = project.wheelKnuckle;
+    const rack = project.steeringRack;
+    const top = project.frontTopMount;
+    const joints = controlArmPickupPoints(
+      p.widthMm, p.rearWidthMm, p.frontHeightMm, p.rearHeightMm, p.controlArmDepthMm,
+      a.lengthMm, a.ballJointOffsetMm, a.leftRotationRad, a.rightRotationRad,
+    ).ballJoint;
+    return tieRodConstrainedKnucklePoints(
+      joints, steeringRackPivotPoints(rack.widthMm, rack.centerlineHeightMm, rack.centerlineOffsetMm, rack.rackTravelMm),
+      frontTopMountPoints(top.widthMm, top.heightMm, top.offsetMm),
+      k.steeringPivotHeightMm, k.steeringPivotDepthMm, k.steeringPivotOffsetMm,
+      k.strutMountHeightMm, k.strutMountOffsetMm, k.strutMountLocationMm, -k.strutMountAngleDeg,
+      rack.tieRodLengthMm, k.strutMinLengthMm, k.strutMaxLengthMm,
+    ).strutLengths;
+  }
+
+  describe("static strut length", () => {
+    it("initializes both struts to 580 mm", () => {
+      const project = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "Project", "id");
+      for (const length of measuredStrutLengths(project)) expect(length).toBeCloseTo(580, 6);
+    });
+
+    it("sets both struts to the configured value and preserves it on reset after dragging", () => {
+      const project = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "Project", "id");
+      project.wheelKnuckle.strutStaticLengthMm = 600;
+      const positioned = withStaticStrutLength(project);
+      for (const length of measuredStrutLengths(positioned)) expect(length).toBeCloseTo(600, 6);
+      positioned.frontControlArm.leftRotationRad += 0.1;
+      positioned.frontControlArm.rightRotationRad -= 0.1;
+      const reset = resetProjectToTemplate(positioned, DEFAULT_TEMPLATE_KEY);
+      expect(reset.wheelKnuckle.strutStaticLengthMm).toBe(600);
+      for (const length of measuredStrutLengths(reset)) expect(length).toBeCloseTo(600, 6);
+    });
+
+    it("reports unreachable static lengths without modifying the project", () => {
+      const project = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "Project", "id");
+      project.wheelKnuckle.strutStaticLengthMm = 1000;
+      const before = structuredClone(project);
+      expect(() => withStaticStrutLength(project)).toThrow("within the strut travel limits");
+      expect(project).toEqual(before);
+      project.wheelKnuckle.strutMaxLengthMm = 1100;
+      expect(() => withStaticStrutLength(project)).toThrow("cannot be reached");
     });
   });
 });

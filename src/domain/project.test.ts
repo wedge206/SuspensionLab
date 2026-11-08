@@ -2,6 +2,24 @@ import { describe, expect, it } from "vitest";
 import { createProjectFromTemplate } from "../templates/templates";
 import { validateProject } from "./project";
 
+describe("static strut length", () => {
+  it("defaults older projects to 580 mm while retaining their saved arm positions", () => {
+    const project = createProjectFromTemplate("default", "Project", "project-id");
+    project.frontControlArm.leftRotationRad = 0.2;
+    const { strutStaticLengthMm: _omitted, ...wheelKnuckle } = project.wheelKnuckle;
+    const loaded = validateProject({ ...project, wheelKnuckle });
+    expect(loaded.wheelKnuckle.strutStaticLengthMm).toBe(580);
+    expect(loaded.frontControlArm.leftRotationRad).toBe(0.2);
+  });
+
+  it.each([0, -1, NaN, Infinity, null, "580"])("rejects invalid static length: %s", (length) => {
+    const project = createProjectFromTemplate("default", "Project", "project-id");
+    expect(() => validateProject({
+      ...project, wheelKnuckle: { ...project.wheelKnuckle, strutStaticLengthMm: length },
+    })).toThrow("strut lengths");
+  });
+});
+
 describe("rear suspension main arm inner mount height", () => {
   const project = () => createProjectFromTemplate("default", "Project", "project-id");
 

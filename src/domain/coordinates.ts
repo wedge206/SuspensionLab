@@ -1,882 +1,889 @@
-import type { SuspensionProject, Vec3 } from "./types";
-import { FRONT_GEOMETRY_ERROR_CODES, GeometryError, isGeometryError } from "./geometryError";
+import type {SuspensionProject, Vec3} from "./types";
+import {FRONT_GEOMETRY_ERROR_CODES, GeometryError, isGeometryError} from "./geometryError";
 
 export const FRONT_PICKUP_STATION_MM = 650;
 
 export interface ControlArmPickupPoints {
-  front: [Vec3, Vec3];
-  rear: [Vec3, Vec3];
-  ballJoint: [Vec3, Vec3];
+    front: [Vec3, Vec3];
+    rear: [Vec3, Vec3];
+    ballJoint: [Vec3, Vec3];
 }
 
 export interface HubOrientation {
-  axis: Vec3;
-  angleRad: number;
-  rollAxis: Vec3;
-  rollAngleRad: number;
+    axis: Vec3;
+    angleRad: number;
+    rollAxis: Vec3;
+    rollAngleRad: number;
 }
 
 export function controlArmPickupPoints(
-  frontWidthMm: number,
-  rearWidthMm: number,
-  frontHeightMm: number,
-  rearHeightMm: number,
-  controlArmDepthMm: number,
-  controlArmLengthMm: number,
-  ballJointOffsetMm: number,
-  leftRotationRad = 0,
-  rightRotationRad = 0,
+    frontWidthMm: number,
+    rearWidthMm: number,
+    frontHeightMm: number,
+    rearHeightMm: number,
+    controlArmDepthMm: number,
+    controlArmLengthMm: number,
+    ballJointOffsetMm: number,
+    leftRotationRad = 0,
+    rightRotationRad = 0,
 ): ControlArmPickupPoints {
-  const front: [Vec3, Vec3] = [
-    [FRONT_PICKUP_STATION_MM, frontWidthMm, frontHeightMm],
-    [FRONT_PICKUP_STATION_MM, -frontWidthMm, frontHeightMm],
-  ];
-  const rear: [Vec3, Vec3] = [
-    [FRONT_PICKUP_STATION_MM - controlArmDepthMm, rearWidthMm, rearHeightMm],
-    [FRONT_PICKUP_STATION_MM - controlArmDepthMm, -rearWidthMm, rearHeightMm],
-  ];
-  const ballJoints: [Vec3, Vec3] = [
-    [FRONT_PICKUP_STATION_MM - ballJointOffsetMm, frontWidthMm + controlArmLengthMm, frontHeightMm],
-    [FRONT_PICKUP_STATION_MM - ballJointOffsetMm, -frontWidthMm - controlArmLengthMm, frontHeightMm],
-  ];
-  return {
-    front,
-    rear,
-    ballJoint: [
-      rotatePointAroundAxis(ballJoints[0], front[0], rear[0], leftRotationRad),
-      rotatePointAroundAxis(ballJoints[1], front[1], rear[1], rightRotationRad),
-    ],
-  };
+    const front: [Vec3, Vec3] = [
+        [FRONT_PICKUP_STATION_MM, frontWidthMm, frontHeightMm],
+        [FRONT_PICKUP_STATION_MM, -frontWidthMm, frontHeightMm],
+    ];
+    const rear: [Vec3, Vec3] = [
+        [FRONT_PICKUP_STATION_MM - controlArmDepthMm, rearWidthMm, rearHeightMm],
+        [FRONT_PICKUP_STATION_MM - controlArmDepthMm, -rearWidthMm, rearHeightMm],
+    ];
+    const ballJoints: [Vec3, Vec3] = [
+        [FRONT_PICKUP_STATION_MM - ballJointOffsetMm, frontWidthMm + controlArmLengthMm, frontHeightMm],
+        [FRONT_PICKUP_STATION_MM - ballJointOffsetMm, -frontWidthMm - controlArmLengthMm, frontHeightMm],
+    ];
+    return {
+        front,
+        rear,
+        ballJoint: [
+            rotatePointAroundAxis(ballJoints[0], front[0], rear[0], leftRotationRad),
+            rotatePointAroundAxis(ballJoints[1], front[1], rear[1], rightRotationRad),
+        ],
+    };
 }
 
 export function rearMainArmInnerMountPoints(
-  frontToRearLengthMm: number,
-  widthMm: number,
-  heightMm: number,
+    frontToRearLengthMm: number,
+    widthMm: number,
+    heightMm: number,
 ): [Vec3, Vec3] {
-  const x = FRONT_PICKUP_STATION_MM - frontToRearLengthMm;
-  const halfWidth = widthMm / 2;
-  return [[x, halfWidth, heightMm], [x, -halfWidth, heightMm]];
+    const x = FRONT_PICKUP_STATION_MM - frontToRearLengthMm;
+    const halfWidth = widthMm / 2;
+    return [[x, halfWidth, heightMm], [x, -halfWidth, heightMm]];
 }
 
 export function rearCamberArmInnerMountPoints(
-  mainArmMounts: [Vec3, Vec3],
-  heightOffsetMm: number,
-  forwardOffsetMm: number,
-  widthMm: number,
+    mainArmMounts: [Vec3, Vec3],
+    heightOffsetMm: number,
+    forwardOffsetMm: number,
+    widthMm: number,
 ): [Vec3, Vec3] {
-  const halfWidth = widthMm / 2;
-  return [
-    [mainArmMounts[0][0] + forwardOffsetMm, halfWidth, mainArmMounts[0][2] + heightOffsetMm],
-    [mainArmMounts[1][0] + forwardOffsetMm, -halfWidth, mainArmMounts[1][2] + heightOffsetMm],
-  ];
+    const halfWidth = widthMm / 2;
+    return [
+        [mainArmMounts[0][0] + forwardOffsetMm, halfWidth, mainArmMounts[0][2] + heightOffsetMm],
+        [mainArmMounts[1][0] + forwardOffsetMm, -halfWidth, mainArmMounts[1][2] + heightOffsetMm],
+    ];
 }
 
 export function rearToeArmInnerMountPoints(
-  mainArmMounts: [Vec3, Vec3],
-  widthMm: number,
-  heightMm: number,
-  forwardOffsetMm: number,
+    mainArmMounts: [Vec3, Vec3],
+    widthMm: number,
+    heightMm: number,
+    forwardOffsetMm: number,
 ): [Vec3, Vec3] {
-  const halfWidth = widthMm / 2;
-  return [
-    [mainArmMounts[0][0] + forwardOffsetMm, halfWidth, heightMm],
-    [mainArmMounts[1][0] + forwardOffsetMm, -halfWidth, heightMm],
-  ];
+    const halfWidth = widthMm / 2;
+    return [
+        [mainArmMounts[0][0] + forwardOffsetMm, halfWidth, heightMm],
+        [mainArmMounts[1][0] + forwardOffsetMm, -halfWidth, heightMm],
+    ];
 }
 
 export function rearTrailingArmMountPoints(
-  mainArmMounts: [Vec3, Vec3],
-  widthMm: number,
-  heightMm: number,
-  forwardOffsetMm: number,
+    mainArmMounts: [Vec3, Vec3],
+    widthMm: number,
+    heightMm: number,
+    forwardOffsetMm: number,
 ): [Vec3, Vec3] {
-  const halfWidth = widthMm / 2;
-  return [
-    [mainArmMounts[0][0] + forwardOffsetMm, halfWidth, heightMm],
-    [mainArmMounts[1][0] + forwardOffsetMm, -halfWidth, heightMm],
-  ];
+    const halfWidth = widthMm / 2;
+    return [
+        [mainArmMounts[0][0] + forwardOffsetMm, halfWidth, heightMm],
+        [mainArmMounts[1][0] + forwardOffsetMm, -halfWidth, heightMm],
+    ];
 }
 
 export function rearMainArmOuterMountPoints(
-  mainArmMounts: [Vec3, Vec3],
-  trailingArmMounts: [Vec3, Vec3],
-  mainArmLengthMm: number,
-  trailingArmLengthMm: number,
-  staticHeightMm: number,
-  leftVerticalOffsetMm = 0,
-  rightVerticalOffsetMm = 0,
+    mainArmMounts: [Vec3, Vec3],
+    trailingArmMounts: [Vec3, Vec3],
+    mainArmLengthMm: number,
+    trailingArmLengthMm: number,
+    staticHeightMm: number,
+    leftVerticalOffsetMm = 0,
+    rightVerticalOffsetMm = 0,
 ): [Vec3, Vec3] {
-  return [
-    [trailingArmMounts[0][0] - trailingArmLengthMm, mainArmMounts[0][1] + mainArmLengthMm, staticHeightMm + leftVerticalOffsetMm],
-    [trailingArmMounts[1][0] - trailingArmLengthMm, mainArmMounts[1][1] - mainArmLengthMm, staticHeightMm + rightVerticalOffsetMm],
-  ];
+    return [
+        [trailingArmMounts[0][0] - trailingArmLengthMm, mainArmMounts[0][1] + mainArmLengthMm, staticHeightMm + leftVerticalOffsetMm],
+        [trailingArmMounts[1][0] - trailingArmLengthMm, mainArmMounts[1][1] - mainArmLengthMm, staticHeightMm + rightVerticalOffsetMm],
+    ];
 }
 
 export function rearToeArmOuterMountPoints(
-  mainArmOuterMounts: [Vec3, Vec3],
-  heightOffsetMm: number,
-  forwardOffsetMm: number,
-  lateralOffsetMm: number,
+    mainArmOuterMounts: [Vec3, Vec3],
+    heightOffsetMm: number,
+    forwardOffsetMm: number,
+    lateralOffsetMm: number,
 ): [Vec3, Vec3] {
-  return [
-    [mainArmOuterMounts[0][0] + forwardOffsetMm, mainArmOuterMounts[0][1] - lateralOffsetMm, mainArmOuterMounts[0][2] + heightOffsetMm],
-    [mainArmOuterMounts[1][0] + forwardOffsetMm, mainArmOuterMounts[1][1] + lateralOffsetMm, mainArmOuterMounts[1][2] + heightOffsetMm],
-  ];
+    return [
+        [mainArmOuterMounts[0][0] + forwardOffsetMm, mainArmOuterMounts[0][1] - lateralOffsetMm, mainArmOuterMounts[0][2] + heightOffsetMm],
+        [mainArmOuterMounts[1][0] + forwardOffsetMm, mainArmOuterMounts[1][1] + lateralOffsetMm, mainArmOuterMounts[1][2] + heightOffsetMm],
+    ];
 }
 
 export interface RearArmSolution {
-  mainOuterMounts: [Vec3, Vec3];
-  toeOuterMounts: [Vec3, Vec3];
+    mainOuterMounts: [Vec3, Vec3];
+    toeOuterMounts: [Vec3, Vec3];
 }
 
 export function solveRearArmMounts(
-  mainMounts: [Vec3, Vec3],
-  toeMounts: [Vec3, Vec3],
-  nominalOuterMounts: [Vec3, Vec3],
-  mainLengthMm: number,
-  toeLengthMm: number,
-  heightOffsetMm: number,
-  forwardOffsetMm: number,
-  lateralOffsetMm: number,
-  staticHeightMm: number,
+    mainMounts: [Vec3, Vec3],
+    toeMounts: [Vec3, Vec3],
+    nominalOuterMounts: [Vec3, Vec3],
+    mainLengthMm: number,
+    toeLengthMm: number,
+    heightOffsetMm: number,
+    forwardOffsetMm: number,
+    lateralOffsetMm: number,
+    staticHeightMm: number,
 ): RearArmSolution {
-  const mainPoints: Vec3[] = [];
-  const toePoints: Vec3[] = [];
-  for (const side of [0, 1] as const) {
-    const main = mainMounts[side];
-    const toe = toeMounts[side];
-    const nominal = nominalOuterMounts[side];
-    const deltaX = nominal[0] - main[0];
-    const deltaZ = nominal[2] - main[2];
-    const lateralSquared = mainLengthMm ** 2 - deltaX ** 2 - deltaZ ** 2;
-    const toeHeight = nominal[2] + heightOffsetMm;
-    const toeHorizontalSquared = toeLengthMm ** 2 - (toeHeight - toe[2]) ** 2;
-    if (lateralSquared < -1e-8 || toeHorizontalSquared < -1e-8) {
-      throw new GeometryError("rearArmsUnreachable");
+    const mainPoints: Vec3[] = [];
+    const toePoints: Vec3[] = [];
+    for (const side of [0, 1] as const) {
+        const main = mainMounts[side];
+        const toe = toeMounts[side];
+        const nominal = nominalOuterMounts[side];
+        const deltaX = nominal[0] - main[0];
+        const deltaZ = nominal[2] - main[2];
+        const lateralSquared = mainLengthMm ** 2 - deltaX ** 2 - deltaZ ** 2;
+        const toeHeight = nominal[2] + heightOffsetMm;
+        const toeHorizontalSquared = toeLengthMm ** 2 - (toeHeight - toe[2]) ** 2;
+        if (lateralSquared < -1e-8 || toeHorizontalSquared < -1e-8) {
+            throw new GeometryError("rearArmsUnreachable");
+        }
+        const mainOuter: Vec3 = [
+            nominal[0], main[1] + (side === 0 ? 1 : -1) * Math.sqrt(Math.max(0, lateralSquared)), nominal[2],
+        ];
+        const dx = toe[0] - mainOuter[0];
+        const dy = toe[1] - mainOuter[1];
+        const distance = Math.hypot(dx, dy);
+        const hubRadius = Math.hypot(forwardOffsetMm, lateralOffsetMm);
+        const toeRadius = Math.sqrt(Math.max(0, toeHorizontalSquared));
+        if (distance < 1e-9 || distance > hubRadius + toeRadius + 1e-9 ||
+            distance < Math.abs(hubRadius - toeRadius) - 1e-9) {
+            throw new GeometryError("rearArmsUnreachable");
+        }
+        const along = (hubRadius ** 2 - toeRadius ** 2 + distance ** 2) / (2 * distance);
+        const across = Math.sqrt(Math.max(0, hubRadius ** 2 - along ** 2));
+        const ux = dx / distance;
+        const uy = dy / distance;
+        const nominalY = side === 0 ? -lateralOffsetMm : lateralOffsetMm;
+        const referenceLateral = Math.sqrt(Math.max(0, mainLengthMm ** 2 - deltaX ** 2 - (staticHeightMm - main[2]) ** 2));
+        const referenceDy = toe[1] - main[1] - (side === 0 ? 1 : -1) * referenceLateral;
+        const sideOfCenterLine = -forwardOffsetMm * referenceDy + nominalY * dx;
+        const sign = sideOfCenterLine === 0 ? (side === 0 ? 1 : -1) : Math.sign(sideOfCenterLine);
+        mainPoints.push(mainOuter);
+        toePoints.push([
+            mainOuter[0] + along * ux - sign * across * uy,
+            mainOuter[1] + along * uy + sign * across * ux,
+            toeHeight,
+        ]);
     }
-    const mainOuter: Vec3 = [
-      nominal[0], main[1] + (side === 0 ? 1 : -1) * Math.sqrt(Math.max(0, lateralSquared)), nominal[2],
-    ];
-    const dx = toe[0] - mainOuter[0];
-    const dy = toe[1] - mainOuter[1];
-    const distance = Math.hypot(dx, dy);
-    const hubRadius = Math.hypot(forwardOffsetMm, lateralOffsetMm);
-    const toeRadius = Math.sqrt(Math.max(0, toeHorizontalSquared));
-    if (distance < 1e-9 || distance > hubRadius + toeRadius + 1e-9 ||
-        distance < Math.abs(hubRadius - toeRadius) - 1e-9) {
-      throw new GeometryError("rearArmsUnreachable");
-    }
-    const along = (hubRadius ** 2 - toeRadius ** 2 + distance ** 2) / (2 * distance);
-    const across = Math.sqrt(Math.max(0, hubRadius ** 2 - along ** 2));
-    const ux = dx / distance;
-    const uy = dy / distance;
-    const nominalY = side === 0 ? -lateralOffsetMm : lateralOffsetMm;
-    const referenceLateral = Math.sqrt(Math.max(0, mainLengthMm ** 2 - deltaX ** 2 - (staticHeightMm - main[2]) ** 2));
-    const referenceDy = toe[1] - main[1] - (side === 0 ? 1 : -1) * referenceLateral;
-    const sideOfCenterLine = -forwardOffsetMm * referenceDy + nominalY * dx;
-    const sign = sideOfCenterLine === 0 ? (side === 0 ? 1 : -1) : Math.sign(sideOfCenterLine);
-    mainPoints.push(mainOuter);
-    toePoints.push([
-      mainOuter[0] + along * ux - sign * across * uy,
-      mainOuter[1] + along * uy + sign * across * ux,
-      toeHeight,
-    ]);
-  }
-  return { mainOuterMounts: [mainPoints[0], mainPoints[1]], toeOuterMounts: [toePoints[0], toePoints[1]] };
+    return {mainOuterMounts: [mainPoints[0], mainPoints[1]], toeOuterMounts: [toePoints[0], toePoints[1]]};
 }
 
 export function rearArmAxisEnd(mainMount: Vec3, trailingMount: Vec3, outerMount: Vec3): Vec3 {
-  if (Math.hypot(
-    trailingMount[0] - mainMount[0], trailingMount[1] - mainMount[1], trailingMount[2] - mainMount[2],
-  ) > 1e-9) return trailingMount;
-  const radialY = outerMount[1] - mainMount[1];
-  const radialZ = outerMount[2] - mainMount[2];
-  return Math.hypot(radialY, radialZ) > 1e-9
-    ? [mainMount[0] + 1, mainMount[1], mainMount[2]]
-    : [mainMount[0], mainMount[1] + 1, mainMount[2]];
+    if (Math.hypot(
+        trailingMount[0] - mainMount[0], trailingMount[1] - mainMount[1], trailingMount[2] - mainMount[2],
+    ) > 1e-9) return trailingMount;
+    const radialY = outerMount[1] - mainMount[1];
+    const radialZ = outerMount[2] - mainMount[2];
+    return Math.hypot(radialY, radialZ) > 1e-9
+        ? [mainMount[0] + 1, mainMount[1], mainMount[2]]
+        : [mainMount[0], mainMount[1] + 1, mainMount[2]];
 }
 
 export function rotatePointAroundAxis(point: Vec3, axisStart: Vec3, axisEnd: Vec3, angle: number): Vec3 {
-  const axis = normalize([
-    axisEnd[0] - axisStart[0],
-    axisEnd[1] - axisStart[1],
-    axisEnd[2] - axisStart[2],
-  ]);
-  const vector = [
-    point[0] - axisStart[0],
-    point[1] - axisStart[1],
-    point[2] - axisStart[2],
-  ];
-  const cross = [
-    axis[1] * vector[2] - axis[2] * vector[1],
-    axis[2] * vector[0] - axis[0] * vector[2],
-    axis[0] * vector[1] - axis[1] * vector[0],
-  ];
-  const dot = axis[0] * vector[0] + axis[1] * vector[1] + axis[2] * vector[2];
-  const cosine = Math.cos(angle);
-  const sine = Math.sin(angle);
-  return [
-    axisStart[0] + vector[0] * cosine + cross[0] * sine + axis[0] * dot * (1 - cosine),
-    axisStart[1] + vector[1] * cosine + cross[1] * sine + axis[1] * dot * (1 - cosine),
-    axisStart[2] + vector[2] * cosine + cross[2] * sine + axis[2] * dot * (1 - cosine),
-  ];
+    const axis = normalize([
+        axisEnd[0] - axisStart[0],
+        axisEnd[1] - axisStart[1],
+        axisEnd[2] - axisStart[2],
+    ]);
+    const vector = [
+        point[0] - axisStart[0],
+        point[1] - axisStart[1],
+        point[2] - axisStart[2],
+    ];
+    const cross = [
+        axis[1] * vector[2] - axis[2] * vector[1],
+        axis[2] * vector[0] - axis[0] * vector[2],
+        axis[0] * vector[1] - axis[1] * vector[0],
+    ];
+    const dot = axis[0] * vector[0] + axis[1] * vector[1] + axis[2] * vector[2];
+    const cosine = Math.cos(angle);
+    const sine = Math.sin(angle);
+    return [
+        axisStart[0] + vector[0] * cosine + cross[0] * sine + axis[0] * dot * (1 - cosine),
+        axisStart[1] + vector[1] * cosine + cross[1] * sine + axis[1] * dot * (1 - cosine),
+        axisStart[2] + vector[2] * cosine + cross[2] * sine + axis[2] * dot * (1 - cosine),
+    ];
 }
 
 function rotateVector(vector: Vec3, axis: Vec3, angle: number): Vec3 {
-  const cosine = Math.cos(angle);
-  const sine = Math.sin(angle);
-  const cross = [
-    axis[1] * vector[2] - axis[2] * vector[1],
-    axis[2] * vector[0] - axis[0] * vector[2],
-    axis[0] * vector[1] - axis[1] * vector[0],
-  ];
-  const dot = axis[0] * vector[0] + axis[1] * vector[1] + axis[2] * vector[2];
-  return [
-    vector[0] * cosine + cross[0] * sine + axis[0] * dot * (1 - cosine),
-    vector[1] * cosine + cross[1] * sine + axis[1] * dot * (1 - cosine),
-    vector[2] * cosine + cross[2] * sine + axis[2] * dot * (1 - cosine),
-  ];
+    const cosine = Math.cos(angle);
+    const sine = Math.sin(angle);
+    const cross = [
+        axis[1] * vector[2] - axis[2] * vector[1],
+        axis[2] * vector[0] - axis[0] * vector[2],
+        axis[0] * vector[1] - axis[1] * vector[0],
+    ];
+    const dot = axis[0] * vector[0] + axis[1] * vector[1] + axis[2] * vector[2];
+    return [
+        vector[0] * cosine + cross[0] * sine + axis[0] * dot * (1 - cosine),
+        vector[1] * cosine + cross[1] * sine + axis[1] * dot * (1 - cosine),
+        vector[2] * cosine + cross[2] * sine + axis[2] * dot * (1 - cosine),
+    ];
 }
 
 export function orientHubPoint(point: Vec3, ballJoint: Vec3, orientation: HubOrientation): Vec3 {
-  const vector: Vec3 = [
-    point[0] - ballJoint[0],
-    point[1] - ballJoint[1],
-    point[2] - ballJoint[2],
-  ];
-  const aligned = rotateVector(vector, orientation.axis, orientation.angleRad);
-  const rolled = rotateVector(aligned, orientation.rollAxis, orientation.rollAngleRad);
-  return [
-    ballJoint[0] + rolled[0],
-    ballJoint[1] + rolled[1],
-    ballJoint[2] + rolled[2],
-  ];
+    const vector: Vec3 = [
+        point[0] - ballJoint[0],
+        point[1] - ballJoint[1],
+        point[2] - ballJoint[2],
+    ];
+    const aligned = rotateVector(vector, orientation.axis, orientation.angleRad);
+    const rolled = rotateVector(aligned, orientation.rollAxis, orientation.rollAngleRad);
+    return [
+        ballJoint[0] + rolled[0],
+        ballJoint[1] + rolled[1],
+        ballJoint[2] + rolled[2],
+    ];
 }
 
 function normalize(vector: [number, number, number]): [number, number, number] {
-  const length = Math.hypot(...vector);
-  return [vector[0] / length, vector[1] / length, vector[2] / length];
+    const length = Math.hypot(...vector);
+    return [vector[0] / length, vector[1] / length, vector[2] / length];
 }
 
 export function steeringRackPivotPoints(
-  widthMm: number,
-  centerlineHeightMm: number,
-  centerlineOffsetMm: number,
-  rackTravelMm = 0,
+    widthMm: number,
+    centerlineHeightMm: number,
+    centerlineOffsetMm: number,
+    rackTravelMm = 0,
 ): [Vec3, Vec3] {
-  const x = FRONT_PICKUP_STATION_MM - centerlineOffsetMm;
-  const halfWidth = widthMm / 2;
-  return [
-    [x, halfWidth + rackTravelMm, centerlineHeightMm],
-    [x, -halfWidth + rackTravelMm, centerlineHeightMm],
-  ];
+    const x = FRONT_PICKUP_STATION_MM - centerlineOffsetMm;
+    const halfWidth = widthMm / 2;
+    return [
+        [x, halfWidth + rackTravelMm, centerlineHeightMm],
+        [x, -halfWidth + rackTravelMm, centerlineHeightMm],
+    ];
 }
 
 export function steeringRackTravelLimitMm(
-  rackWidthMm: number,
-  housingWidthMm: number,
-  steeringLimiterMm: number,
+    rackWidthMm: number,
+    housingWidthMm: number,
+    steeringLimiterMm: number,
 ): number {
-  return Math.max(0, (rackWidthMm - housingWidthMm) / 2 - steeringLimiterMm);
+    return Math.max(0, (rackWidthMm - housingWidthMm) / 2 - steeringLimiterMm);
 }
 
 export function tieRodConstrainedKnucklePoints(
-  ballJoints: [Vec3, Vec3],
-  rackPivots: [Vec3, Vec3],
-  topMounts: [Vec3, Vec3],
-  steeringPivotHeightMm: number,
-  steeringPivotDepthMm: number,
-  steeringPivotOffsetMm: number,
-  strutMountHeightMm: number,
-  strutMountOffsetMm: number,
-  strutMountLocationMm: number,
-  strutMountAngleDeg: number,
-  tieRodLengthMm: number,
-  strutMinLengthMm: number,
-  strutMaxLengthMm: number,
+    ballJoints: [Vec3, Vec3],
+    rackPivots: [Vec3, Vec3],
+    topMounts: [Vec3, Vec3],
+    steeringPivotHeightMm: number,
+    steeringPivotDepthMm: number,
+    steeringPivotOffsetMm: number,
+    strutMountHeightMm: number,
+    strutMountOffsetMm: number,
+    strutMountLocationMm: number,
+    strutMountAngleDeg: number,
+    tieRodLengthMm: number,
+    strutMinLengthMm: number,
+    strutMaxLengthMm: number,
 ): {
-  steeringPivots: [Vec3, Vec3];
-  strutMounts: [Vec3, Vec3];
-  orientations: [HubOrientation, HubOrientation];
-  strutLengths: [number, number];
+    steeringPivots: [Vec3, Vec3];
+    strutMounts: [Vec3, Vec3];
+    orientations: [HubOrientation, HubOrientation];
+    strutLengths: [number, number];
 } {
-  const neutralSteeringPivots = steeringKnucklePivotPoints(
-    ballJoints,
-    steeringPivotHeightMm,
-    steeringPivotDepthMm,
-    steeringPivotOffsetMm,
-  );
-  const neutralStrutMounts = strutMountPoints(
-    ballJoints,
-    strutMountHeightMm,
-    strutMountOffsetMm,
-    strutMountLocationMm,
-  );
+    const neutralSteeringPivots = steeringKnucklePivotPoints(
+        ballJoints,
+        steeringPivotHeightMm,
+        steeringPivotDepthMm,
+        steeringPivotOffsetMm,
+    );
+    const neutralStrutMounts = strutMountPoints(
+        ballJoints,
+        strutMountHeightMm,
+        strutMountOffsetMm,
+        strutMountLocationMm,
+    );
 
-  const rotateAboutSteeringAxis = (index: 0 | 1): {
-    steeringPivot: Vec3;
-    strutMount: Vec3;
-    orientation: HubOrientation;
-    strutLength: number;
-  } => {
-    const ballJoint = ballJoints[index];
-    const steeringPivot = neutralSteeringPivots[index];
-    const rackPivot = rackPivots[index];
-    const targetVector: [number, number, number] = [
-      topMounts[index][0] - ballJoint[0],
-      topMounts[index][1] - ballJoint[1],
-      topMounts[index][2] - ballJoint[2],
-    ];
-    const topMountDistance = Math.hypot(...targetVector);
-    if (topMountDistance < 1e-9) {
-      throw new GeometryError("tieRodUnsatisfiable");
-    }
-    const topDirection = normalize(targetVector);
-    const neutralStrutMount = neutralStrutMounts[index];
-    const mountOffset: Vec3 = [
-      neutralStrutMount[0] - ballJoint[0],
-      neutralStrutMount[1] - ballJoint[1],
-      neutralStrutMount[2] - ballJoint[2],
-    ];
-    const side: 1 | -1 = index === 0 ? 1 : -1;
-    const angleRad = strutMountAngleDeg * Math.PI / 180;
-    const strutDirection: Vec3 = [0, side * Math.sin(angleRad), Math.cos(angleRad)];
-    const mountProjection =
-      mountOffset[0] * strutDirection[0] +
-      mountOffset[1] * strutDirection[1] +
-      mountOffset[2] * strutDirection[2];
-    const discriminant = mountProjection ** 2 + topMountDistance ** 2 -
-      mountOffset[0] ** 2 - mountOffset[1] ** 2 - mountOffset[2] ** 2;
-    if (discriminant < -1e-7) {
-      throw new GeometryError("strutCannotReachTopMount");
-    }
-    const root = Math.sqrt(Math.max(0, discriminant));
-    const candidates = [-mountProjection + root, -mountProjection - root]
-      .filter((length) => length > 0);
-    if (!candidates.length) {
-      throw new GeometryError("strutCannotReachTopMount");
-    }
-    const distanceToTravel = (length: number): number =>
-      Math.max(strutMinLengthMm - length, 0, length - strutMaxLengthMm);
-    const strutLength = candidates.sort((a, b) =>
-      distanceToTravel(a) - distanceToTravel(b))[0];
-    const localStrutEndpoint: Vec3 = [
-      mountOffset[0] + strutDirection[0] * strutLength,
-      mountOffset[1] + strutDirection[1] * strutLength,
-      mountOffset[2] + strutDirection[2] * strutLength,
-    ];
-    const from = normalize(localStrutEndpoint);
-    const to = topDirection;
-    const rotationAxis: Vec3 = [
-      from[1] * to[2] - from[2] * to[1],
-      from[2] * to[0] - from[0] * to[2],
-      from[0] * to[1] - from[1] * to[0],
-    ];
-    const axisMagnitude = Math.hypot(...rotationAxis);
-    const alignment = Math.max(-1, Math.min(1,
-      from[0] * to[0] + from[1] * to[1] + from[2] * to[2]));
-    const baseAxis: Vec3 = axisMagnitude > 1e-9
-      ? normalize(rotationAxis)
-      : Math.abs(from[2]) < 0.9
-        ? normalize([from[1], -from[0], 0])
-        : normalize([0, from[2], -from[1]]);
-    const baseAngle = axisMagnitude > 1e-9
-      ? Math.atan2(axisMagnitude, alignment)
-      : alignment < 0 ? Math.PI : 0;
-    const baseOrientation: HubOrientation = {
-      axis: baseAxis,
-      angleRad: baseAngle,
-      rollAxis: to,
-      rollAngleRad: 0,
+    const rotateAboutSteeringAxis = (index: 0 | 1): {
+        steeringPivot: Vec3;
+        strutMount: Vec3;
+        orientation: HubOrientation;
+        strutLength: number;
+    } => {
+        const ballJoint = ballJoints[index];
+        const steeringPivot = neutralSteeringPivots[index];
+        const rackPivot = rackPivots[index];
+        const targetVector: [number, number, number] = [
+            topMounts[index][0] - ballJoint[0],
+            topMounts[index][1] - ballJoint[1],
+            topMounts[index][2] - ballJoint[2],
+        ];
+        const topMountDistance = Math.hypot(...targetVector);
+        if (topMountDistance < 1e-9) {
+            throw new GeometryError("tieRodUnsatisfiable");
+        }
+        const topDirection = normalize(targetVector);
+        const neutralStrutMount = neutralStrutMounts[index];
+        const mountOffset: Vec3 = [
+            neutralStrutMount[0] - ballJoint[0],
+            neutralStrutMount[1] - ballJoint[1],
+            neutralStrutMount[2] - ballJoint[2],
+        ];
+        const side: 1 | -1 = index === 0 ? 1 : -1;
+        const angleRad = strutMountAngleDeg * Math.PI / 180;
+        const strutDirection: Vec3 = [0, side * Math.sin(angleRad), Math.cos(angleRad)];
+        const mountProjection =
+            mountOffset[0] * strutDirection[0] +
+            mountOffset[1] * strutDirection[1] +
+            mountOffset[2] * strutDirection[2];
+        const discriminant = mountProjection ** 2 + topMountDistance ** 2 -
+            mountOffset[0] ** 2 - mountOffset[1] ** 2 - mountOffset[2] ** 2;
+        if (discriminant < -1e-7) {
+            throw new GeometryError("strutCannotReachTopMount");
+        }
+        const root = Math.sqrt(Math.max(0, discriminant));
+        const candidates = [-mountProjection + root, -mountProjection - root]
+            .filter((length) => length > 0);
+        if (!candidates.length) {
+            throw new GeometryError("strutCannotReachTopMount");
+        }
+        const distanceToTravel = (length: number): number =>
+            Math.max(strutMinLengthMm - length, 0, length - strutMaxLengthMm);
+        const strutLength = candidates.sort((a, b) =>
+            distanceToTravel(a) - distanceToTravel(b))[0];
+        const localStrutEndpoint: Vec3 = [
+            mountOffset[0] + strutDirection[0] * strutLength,
+            mountOffset[1] + strutDirection[1] * strutLength,
+            mountOffset[2] + strutDirection[2] * strutLength,
+        ];
+        const from = normalize(localStrutEndpoint);
+        const to = topDirection;
+        const rotationAxis: Vec3 = [
+            from[1] * to[2] - from[2] * to[1],
+            from[2] * to[0] - from[0] * to[2],
+            from[0] * to[1] - from[1] * to[0],
+        ];
+        const axisMagnitude = Math.hypot(...rotationAxis);
+        const alignment = Math.max(-1, Math.min(1,
+            from[0] * to[0] + from[1] * to[1] + from[2] * to[2]));
+        const baseAxis: Vec3 = axisMagnitude > 1e-9
+            ? normalize(rotationAxis)
+            : Math.abs(from[2]) < 0.9
+                ? normalize([from[1], -from[0], 0])
+                : normalize([0, from[2], -from[1]]);
+        const baseAngle = axisMagnitude > 1e-9
+            ? Math.atan2(axisMagnitude, alignment)
+            : alignment < 0 ? Math.PI : 0;
+        const baseOrientation: HubOrientation = {
+            axis: baseAxis,
+            angleRad: baseAngle,
+            rollAxis: to,
+            rollAngleRad: 0,
+        };
+        const baseSteering = orientHubPoint(steeringPivot, ballJoint, baseOrientation);
+        const steeringOffset: Vec3 = [
+            baseSteering[0] - ballJoint[0],
+            baseSteering[1] - ballJoint[1],
+            baseSteering[2] - ballJoint[2],
+        ];
+        const rackOffset: Vec3 = [
+            rackPivot[0] - ballJoint[0],
+            rackPivot[1] - ballJoint[1],
+            rackPivot[2] - ballJoint[2],
+        ];
+        const projection = (vector: Vec3): number =>
+            vector[0] * to[0] + vector[1] * to[1] + vector[2] * to[2];
+        const steeringAxial = projection(steeringOffset);
+        const rackAxial = projection(rackOffset);
+        const steeringRadial: Vec3 = [
+            steeringOffset[0] - to[0] * steeringAxial,
+            steeringOffset[1] - to[1] * steeringAxial,
+            steeringOffset[2] - to[2] * steeringAxial,
+        ];
+        const rackRadial: Vec3 = [
+            rackOffset[0] - to[0] * rackAxial,
+            rackOffset[1] - to[1] * rackAxial,
+            rackOffset[2] - to[2] * rackAxial,
+        ];
+        const cross: Vec3 = [
+            to[1] * steeringRadial[2] - to[2] * steeringRadial[1],
+            to[2] * steeringRadial[0] - to[0] * steeringRadial[2],
+            to[0] * steeringRadial[1] - to[1] * steeringRadial[0],
+        ];
+        const constant = (
+            (rackAxial - steeringAxial) ** 2 +
+            rackRadial[0] ** 2 + rackRadial[1] ** 2 + rackRadial[2] ** 2 +
+            steeringRadial[0] ** 2 + steeringRadial[1] ** 2 + steeringRadial[2] ** 2 -
+            tieRodLengthMm ** 2
+        ) / 2;
+        const cosineCoefficient =
+            rackRadial[0] * steeringRadial[0] +
+            rackRadial[1] * steeringRadial[1] +
+            rackRadial[2] * steeringRadial[2];
+        const sineCoefficient =
+            rackRadial[0] * cross[0] +
+            rackRadial[1] * cross[1] +
+            rackRadial[2] * cross[2];
+        const amplitude = Math.hypot(cosineCoefficient, sineCoefficient);
+        if (Math.abs(constant) > amplitude + 1e-7) {
+            throw new GeometryError("tieRodUnsatisfiable");
+        }
+
+        let rollAngleRad = 0;
+        if (amplitude >= 1e-9) {
+            const phase = Math.atan2(sineCoefficient, cosineCoefficient);
+            const offset = Math.acos(Math.max(-1, Math.min(1, constant / amplitude)));
+            const candidateAngles = [phase + offset, phase - offset];
+            rollAngleRad = candidateAngles
+                .map((candidate) => Math.atan2(Math.sin(candidate), Math.cos(candidate)))
+                .sort((a, b) => Math.abs(a) - Math.abs(b))[0];
+        }
+        const orientation: HubOrientation = {...baseOrientation, rollAngleRad};
+        return {
+            steeringPivot: orientHubPoint(steeringPivot, ballJoint, orientation),
+            strutMount: orientHubPoint(neutralStrutMount, ballJoint, orientation),
+            orientation,
+            strutLength,
+        };
     };
-    const baseSteering = orientHubPoint(steeringPivot, ballJoint, baseOrientation);
-    const steeringOffset: Vec3 = [
-      baseSteering[0] - ballJoint[0],
-      baseSteering[1] - ballJoint[1],
-      baseSteering[2] - ballJoint[2],
-    ];
-    const rackOffset: Vec3 = [
-      rackPivot[0] - ballJoint[0],
-      rackPivot[1] - ballJoint[1],
-      rackPivot[2] - ballJoint[2],
-    ];
-    const projection = (vector: Vec3): number =>
-      vector[0] * to[0] + vector[1] * to[1] + vector[2] * to[2];
-    const steeringAxial = projection(steeringOffset);
-    const rackAxial = projection(rackOffset);
-    const steeringRadial: Vec3 = [
-      steeringOffset[0] - to[0] * steeringAxial,
-      steeringOffset[1] - to[1] * steeringAxial,
-      steeringOffset[2] - to[2] * steeringAxial,
-    ];
-    const rackRadial: Vec3 = [
-      rackOffset[0] - to[0] * rackAxial,
-      rackOffset[1] - to[1] * rackAxial,
-      rackOffset[2] - to[2] * rackAxial,
-    ];
-    const cross: Vec3 = [
-      to[1] * steeringRadial[2] - to[2] * steeringRadial[1],
-      to[2] * steeringRadial[0] - to[0] * steeringRadial[2],
-      to[0] * steeringRadial[1] - to[1] * steeringRadial[0],
-    ];
-    const constant = (
-      (rackAxial - steeringAxial) ** 2 +
-      rackRadial[0] ** 2 + rackRadial[1] ** 2 + rackRadial[2] ** 2 +
-      steeringRadial[0] ** 2 + steeringRadial[1] ** 2 + steeringRadial[2] ** 2 -
-      tieRodLengthMm ** 2
-    ) / 2;
-    const cosineCoefficient =
-      rackRadial[0] * steeringRadial[0] +
-      rackRadial[1] * steeringRadial[1] +
-      rackRadial[2] * steeringRadial[2];
-    const sineCoefficient =
-      rackRadial[0] * cross[0] +
-      rackRadial[1] * cross[1] +
-      rackRadial[2] * cross[2];
-    const amplitude = Math.hypot(cosineCoefficient, sineCoefficient);
-    if (Math.abs(constant) > amplitude + 1e-7) {
-      throw new GeometryError("tieRodUnsatisfiable");
-    }
 
-    let rollAngleRad = 0;
-    if (amplitude >= 1e-9) {
-      const phase = Math.atan2(sineCoefficient, cosineCoefficient);
-      const offset = Math.acos(Math.max(-1, Math.min(1, constant / amplitude)));
-      const candidateAngles = [phase + offset, phase - offset];
-      rollAngleRad = candidateAngles
-        .map((candidate) => Math.atan2(Math.sin(candidate), Math.cos(candidate)))
-        .sort((a, b) => Math.abs(a) - Math.abs(b))[0];
-    }
-    const orientation: HubOrientation = { ...baseOrientation, rollAngleRad };
+    const left = rotateAboutSteeringAxis(0);
+    const right = rotateAboutSteeringAxis(1);
     return {
-      steeringPivot: orientHubPoint(steeringPivot, ballJoint, orientation),
-      strutMount: orientHubPoint(neutralStrutMount, ballJoint, orientation),
-      orientation,
-      strutLength,
+        steeringPivots: [left.steeringPivot, right.steeringPivot],
+        strutMounts: [left.strutMount, right.strutMount],
+        orientations: [left.orientation, right.orientation],
+        strutLengths: [left.strutLength, right.strutLength],
     };
-  };
-
-  const left = rotateAboutSteeringAxis(0);
-  const right = rotateAboutSteeringAxis(1);
-  return {
-    steeringPivots: [left.steeringPivot, right.steeringPivot],
-    strutMounts: [left.strutMount, right.strutMount],
-    orientations: [left.orientation, right.orientation],
-    strutLengths: [left.strutLength, right.strutLength],
-  };
 }
 
 export function frontTopMountPoints(
-  widthMm: number,
-  heightMm: number,
-  offsetMm: number,
+    widthMm: number,
+    heightMm: number,
+    offsetMm: number,
 ): [Vec3, Vec3] {
-  const x = FRONT_PICKUP_STATION_MM - offsetMm;
-  const halfWidth = widthMm / 2;
-  return [
-    [x, halfWidth, heightMm],
-    [x, -halfWidth, heightMm],
-  ];
+    const x = FRONT_PICKUP_STATION_MM - offsetMm;
+    const halfWidth = widthMm / 2;
+    return [
+        [x, halfWidth, heightMm],
+        [x, -halfWidth, heightMm],
+    ];
 }
 
 export function withStaticStrutLength(project: SuspensionProject): SuspensionProject {
-  const { frontLowerControlArmPickup: pickup, frontControlArm: arm, wheelKnuckle: knuckle } = project;
-  const length = knuckle.strutStaticLengthMm;
-  if (length < knuckle.strutMinLengthMm || length > knuckle.strutMaxLengthMm) {
-    throw new Error("Strut Static Length must be within the strut travel limits.");
-  }
-  const points = controlArmPickupPoints(
-    pickup.widthMm, pickup.rearWidthMm, pickup.frontHeightMm, pickup.rearHeightMm,
-    pickup.controlArmDepthMm, arm.lengthMm, arm.ballJointOffsetMm,
-  );
-  const tops = frontTopMountPoints(
-    project.frontTopMount.widthMm, project.frontTopMount.heightMm, project.frontTopMount.offsetMm,
-  );
-  const rack = steeringRackPivotPoints(
-    project.steeringRack.widthMm, project.steeringRack.centerlineHeightMm,
-    project.steeringRack.centerlineOffsetMm, project.steeringRack.rackTravelMm,
-  );
-  const angle = -knuckle.strutMountAngleDeg * Math.PI / 180;
-  const targetDistanceSquared =
-    knuckle.strutMountOffsetMm ** 2 +
-    (knuckle.strutMountLocationMm + Math.sin(angle) * length) ** 2 +
-    (knuckle.strutMountHeightMm + Math.cos(angle) * length) ** 2;
-  // The squared distance from a rotating ball joint to its top mount is sinusoidal in arm angle.
-  const rotations = ([0, 1] as const).map((side) => {
-    const distanceSquared = (rotation: number): number => {
-      const joint = rotatePointAroundAxis(points.ballJoint[side], points.front[side], points.rear[side], rotation);
-      return joint.reduce((sum, coordinate, index) => sum + (coordinate - tops[side][index]) ** 2, 0);
-    };
-    const zero = distanceSquared(0);
-    const halfTurn = distanceSquared(Math.PI);
-    const center = (zero + halfTurn) / 2;
-    const cosine = (zero - halfTurn) / 2;
-    const sine = distanceSquared(Math.PI / 2) - center;
-    const amplitude = Math.hypot(cosine, sine);
-    if (amplitude < 1e-9) {
-      if (Math.abs(targetDistanceSquared - center) > 1e-7) return [];
-      const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
-      return Math.abs(currentAngle) <= Math.PI / 2 ? [currentAngle] : [0];
+    const {frontLowerControlArmPickup: pickup, frontControlArm: arm, wheelKnuckle: knuckle} = project;
+    const length = knuckle.strutStaticLengthMm;
+    if (length < knuckle.strutMinLengthMm || length > knuckle.strutMaxLengthMm) {
+        throw new Error("Strut Static Length must be within the strut travel limits.");
     }
-    if (Math.abs(targetDistanceSquared - center) > amplitude + 1e-7) return [];
-    const phase = Math.atan2(sine, cosine);
-    const offset = Math.acos(Math.max(-1, Math.min(1, (targetDistanceSquared - center) / amplitude)));
-    const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
-    return [phase + offset, phase - offset]
-      .map((candidate) => Math.atan2(Math.sin(candidate), Math.cos(candidate)))
-      .filter((candidate) => Math.abs(candidate) <= Math.PI / 2 + 1e-10)
-      .sort((a, b) => Math.abs(a - currentAngle) - Math.abs(b - currentAngle));
-  });
-  for (const left of rotations[0]) {
-    for (const right of rotations[1]) {
-      const joints = controlArmPickupPoints(
+    const points = controlArmPickupPoints(
         pickup.widthMm, pickup.rearWidthMm, pickup.frontHeightMm, pickup.rearHeightMm,
-        pickup.controlArmDepthMm, arm.lengthMm, arm.ballJointOffsetMm, left, right,
-      ).ballJoint;
-      try {
-        const result = tieRodConstrainedKnucklePoints(
-          joints, rack, tops, knuckle.steeringPivotHeightMm, knuckle.steeringPivotDepthMm,
-          knuckle.steeringPivotOffsetMm, knuckle.strutMountHeightMm, knuckle.strutMountOffsetMm,
-          knuckle.strutMountLocationMm, -knuckle.strutMountAngleDeg, project.steeringRack.tieRodLengthMm,
-          knuckle.strutMinLengthMm, knuckle.strutMaxLengthMm,
-        );
-        if (result.strutLengths.every((actual) => Math.abs(actual - length) < 1e-6)) {
-          return { ...project, frontControlArm: { ...arm, leftRotationRad: left, rightRotationRad: right } };
+        pickup.controlArmDepthMm, arm.lengthMm, arm.ballJointOffsetMm,
+    );
+    const tops = frontTopMountPoints(
+        project.frontTopMount.widthMm, project.frontTopMount.heightMm, project.frontTopMount.offsetMm,
+    );
+    const rack = steeringRackPivotPoints(
+        project.steeringRack.widthMm, project.steeringRack.centerlineHeightMm,
+        project.steeringRack.centerlineOffsetMm, project.steeringRack.rackTravelMm,
+    );
+    const angle = -knuckle.strutMountAngleDeg * Math.PI / 180;
+    const targetDistanceSquared =
+        knuckle.strutMountOffsetMm ** 2 +
+        (knuckle.strutMountLocationMm + Math.sin(angle) * length) ** 2 +
+        (knuckle.strutMountHeightMm + Math.cos(angle) * length) ** 2;
+    // The squared distance from a rotating ball joint to its top mount is sinusoidal in arm angle.
+    const rotations = ([0, 1] as const).map((side) => {
+        const distanceSquared = (rotation: number): number => {
+            const joint = rotatePointAroundAxis(points.ballJoint[side], points.front[side], points.rear[side], rotation);
+            return joint.reduce((sum, coordinate, index) => sum + (coordinate - tops[side][index]) ** 2, 0);
+        };
+        const zero = distanceSquared(0);
+        const halfTurn = distanceSquared(Math.PI);
+        const center = (zero + halfTurn) / 2;
+        const cosine = (zero - halfTurn) / 2;
+        const sine = distanceSquared(Math.PI / 2) - center;
+        const amplitude = Math.hypot(cosine, sine);
+        if (amplitude < 1e-9) {
+            if (Math.abs(targetDistanceSquared - center) > 1e-7) return [];
+            const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
+            return Math.abs(currentAngle) <= Math.PI / 2 ? [currentAngle] : [0];
         }
-      } catch (error) {
-        if (!isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) throw error;
-      }
+        if (Math.abs(targetDistanceSquared - center) > amplitude + 1e-7) return [];
+        const phase = Math.atan2(sine, cosine);
+        const offset = Math.acos(Math.max(-1, Math.min(1, (targetDistanceSquared - center) / amplitude)));
+        const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
+        return [phase + offset, phase - offset]
+            .map((candidate) => Math.atan2(Math.sin(candidate), Math.cos(candidate)))
+            .filter((candidate) => Math.abs(candidate) <= Math.PI / 2 + 1e-10)
+            .sort((a, b) => Math.abs(a - currentAngle) - Math.abs(b - currentAngle));
+    });
+    for (const left of rotations[0]) {
+        for (const right of rotations[1]) {
+            const joints = controlArmPickupPoints(
+                pickup.widthMm, pickup.rearWidthMm, pickup.frontHeightMm, pickup.rearHeightMm,
+                pickup.controlArmDepthMm, arm.lengthMm, arm.ballJointOffsetMm, left, right,
+            ).ballJoint;
+            try {
+                const result = tieRodConstrainedKnucklePoints(
+                    joints, rack, tops, knuckle.steeringPivotHeightMm, knuckle.steeringPivotDepthMm,
+                    knuckle.steeringPivotOffsetMm, knuckle.strutMountHeightMm, knuckle.strutMountOffsetMm,
+                    knuckle.strutMountLocationMm, -knuckle.strutMountAngleDeg, project.steeringRack.tieRodLengthMm,
+                    knuckle.strutMinLengthMm, knuckle.strutMaxLengthMm,
+                );
+                if (result.strutLengths.every((actual) => Math.abs(actual - length) < 1e-6)) {
+                    return {...project, frontControlArm: {...arm, leftRotationRad: left, rightRotationRad: right}};
+                }
+            } catch (error) {
+                if (!isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) throw error;
+            }
+        }
     }
-  }
-  throw new Error("Strut Static Length cannot be reached with the current suspension geometry and tie rod constraints.");
+    throw new Error("Strut Static Length cannot be reached with the current suspension geometry and tie rod constraints.");
 }
 
 export function strutLengthsMm(
-  strutMounts: [Vec3, Vec3],
-  topMounts: [Vec3, Vec3],
+    strutMounts: [Vec3, Vec3],
+    topMounts: [Vec3, Vec3],
 ): [number, number] {
-  const distance = (point: Vec3, topMount: Vec3): number => Math.hypot(
-    point[0] - topMount[0],
-    point[1] - topMount[1],
-    point[2] - topMount[2],
-  );
-  return [distance(strutMounts[0], topMounts[0]), distance(strutMounts[1], topMounts[1])];
+    const distance = (point: Vec3, topMount: Vec3): number => Math.hypot(
+        point[0] - topMount[0],
+        point[1] - topMount[1],
+        point[2] - topMount[2],
+    );
+    return [distance(strutMounts[0], topMounts[0]), distance(strutMounts[1], topMounts[1])];
 }
 
 export function strutMountAngleSegments(
-  strutMounts: [Vec3, Vec3],
-  angleDeg: number,
-  markerLengthMm = 80,
-  knuckleRotationRad: [number, number] = [0, 0],
+    strutMounts: [Vec3, Vec3],
+    angleDeg: number,
+    markerLengthMm = 80,
+    knuckleRotationRad: [number, number] = [0, 0],
 ): [Vec3, Vec3, Vec3, Vec3] {
-  const halfLength = markerLengthMm / 2;
-  const angleRad = angleDeg * Math.PI / 180;
-  const segment = (mount: Vec3, rotationRad: number): [Vec3, Vec3] => {
-    const localY = Math.sin(angleRad) * halfLength;
-    const localZ = Math.cos(angleRad) * halfLength;
-    const deltaY = localY * Math.cos(rotationRad) - localZ * Math.sin(rotationRad);
-    const deltaZ = localY * Math.sin(rotationRad) + localZ * Math.cos(rotationRad);
-    return [
-      [mount[0], mount[1] - deltaY, mount[2] - deltaZ],
-      [mount[0], mount[1] + deltaY, mount[2] + deltaZ],
-    ];
-  };
-  const left = segment(strutMounts[0], knuckleRotationRad[0]);
-  const right = segment(strutMounts[1], knuckleRotationRad[1]);
-  return [left[0], left[1], right[0], right[1]];
+    const halfLength = markerLengthMm / 2;
+    const angleRad = angleDeg * Math.PI / 180;
+    const segment = (mount: Vec3, rotationRad: number): [Vec3, Vec3] => {
+        const localY = Math.sin(angleRad) * halfLength;
+        const localZ = Math.cos(angleRad) * halfLength;
+        const deltaY = localY * Math.cos(rotationRad) - localZ * Math.sin(rotationRad);
+        const deltaZ = localY * Math.sin(rotationRad) + localZ * Math.cos(rotationRad);
+        return [
+            [mount[0], mount[1] - deltaY, mount[2] - deltaZ],
+            [mount[0], mount[1] + deltaY, mount[2] + deltaZ],
+        ];
+    };
+    const left = segment(strutMounts[0], knuckleRotationRad[0]);
+    const right = segment(strutMounts[1], knuckleRotationRad[1]);
+    return [left[0], left[1], right[0], right[1]];
 }
 
 export function steeringKnucklePivotPoints(
-  ballJoints: [Vec3, Vec3],
-  heightMm: number,
-  depthMm: number,
-  offsetMm: number,
+    ballJoints: [Vec3, Vec3],
+    heightMm: number,
+    depthMm: number,
+    offsetMm: number,
 ): [Vec3, Vec3] {
-  const makePivot = (ballJoint: Vec3, side: 1 | -1): Vec3 => [
-    ballJoint[0] - depthMm,
-    ballJoint[1] + side * offsetMm,
-    ballJoint[2] + heightMm,
-  ];
-  return [makePivot(ballJoints[0], 1), makePivot(ballJoints[1], -1)];
+    const makePivot = (ballJoint: Vec3, side: 1 | -1): Vec3 => [
+        ballJoint[0] - depthMm,
+        ballJoint[1] + side * offsetMm,
+        ballJoint[2] + heightMm,
+    ];
+    return [makePivot(ballJoints[0], 1), makePivot(ballJoints[1], -1)];
 }
 
 export function strutMountPoints(
-  ballJoints: [Vec3, Vec3],
-  heightMm: number,
-  offsetMm: number,
-  locationMm: number,
+    ballJoints: [Vec3, Vec3],
+    heightMm: number,
+    offsetMm: number,
+    locationMm: number,
 ): [Vec3, Vec3] {
-  const makeMount = (ballJoint: Vec3, side: 1 | -1): Vec3 => [
-    ballJoint[0] - offsetMm,
-    ballJoint[1] + side * locationMm,
-    ballJoint[2] + heightMm,
-  ];
-  return [makeMount(ballJoints[0], 1), makeMount(ballJoints[1], -1)];
+    const makeMount = (ballJoint: Vec3, side: 1 | -1): Vec3 => [
+        ballJoint[0] - offsetMm,
+        ballJoint[1] + side * locationMm,
+        ballJoint[2] + heightMm,
+    ];
+    return [makeMount(ballJoints[0], 1), makeMount(ballJoints[1], -1)];
 }
 
 export function hubFacePoints(
-  ballJoints: [Vec3, Vec3],
-  steeringPivots: [Vec3, Vec3],
-  strutMounts: [Vec3, Vec3],
-  steeringPivotOffsetMm: number,
-  strutMountLocationMm: number,
+    ballJoints: [Vec3, Vec3],
+    steeringPivots: [Vec3, Vec3],
+    strutMounts: [Vec3, Vec3],
+    steeringPivotOffsetMm: number,
+    strutMountLocationMm: number,
 ): [[Vec3, Vec3, Vec3], [Vec3, Vec3, Vec3]] {
-  const makeFace = (index: 0 | 1): [Vec3, Vec3, Vec3] => {
-    const side: 1 | -1 = index === 0 ? 1 : -1;
-    const extendOutward = (point: Vec3, distanceMm: number): Vec3 => [
-      point[0],
-      point[1] + side * Math.abs(distanceMm),
-      point[2],
-    ];
-    return [
-      extendOutward(steeringPivots[index], steeringPivotOffsetMm),
-      extendOutward(strutMounts[index], strutMountLocationMm),
-      ballJoints[index],
-    ];
-  };
-  return [makeFace(0), makeFace(1)];
+    const makeFace = (index: 0 | 1): [Vec3, Vec3, Vec3] => {
+        const side: 1 | -1 = index === 0 ? 1 : -1;
+        const extendOutward = (point: Vec3, distanceMm: number): Vec3 => [
+            point[0],
+            point[1] + side * Math.abs(distanceMm),
+            point[2],
+        ];
+        return [
+            extendOutward(steeringPivots[index], steeringPivotOffsetMm),
+            extendOutward(strutMounts[index], strutMountLocationMm),
+            ballJoints[index],
+        ];
+    };
+    return [makeFace(0), makeFace(1)];
 }
 
 export function steeredHubFacePoints(
-  ballJoints: [Vec3, Vec3],
-  neutralSteeringPivots: [Vec3, Vec3],
-  neutralStrutMounts: [Vec3, Vec3],
-  steeringPivotOffsetMm: number,
-  strutMountLocationMm: number,
-  orientations: [HubOrientation, HubOrientation],
+    ballJoints: [Vec3, Vec3],
+    neutralSteeringPivots: [Vec3, Vec3],
+    neutralStrutMounts: [Vec3, Vec3],
+    steeringPivotOffsetMm: number,
+    strutMountLocationMm: number,
+    orientations: [HubOrientation, HubOrientation],
 ): [[Vec3, Vec3, Vec3], [Vec3, Vec3, Vec3]] {
-  const neutralFaces = hubFacePoints(
-    ballJoints,
-    neutralSteeringPivots,
-    neutralStrutMounts,
-    steeringPivotOffsetMm,
-    strutMountLocationMm,
-  );
-  return neutralFaces.map((face, index) => face.map((point) =>
-    orientHubPoint(point, ballJoints[index], orientations[index])
-  ) as [Vec3, Vec3, Vec3]) as [[Vec3, Vec3, Vec3], [Vec3, Vec3, Vec3]];
+    const neutralFaces = hubFacePoints(
+        ballJoints,
+        neutralSteeringPivots,
+        neutralStrutMounts,
+        steeringPivotOffsetMm,
+        strutMountLocationMm,
+    );
+    return neutralFaces.map((face, index) => face.map((point) =>
+        orientHubPoint(point, ballJoints[index], orientations[index])
+    ) as [Vec3, Vec3, Vec3]) as [[Vec3, Vec3, Vec3], [Vec3, Vec3, Vec3]];
 }
 
 export function trueHubFaceGeometry(
-  face: [Vec3, Vec3, Vec3],
-  hubHeightMm: number,
-  hubSpacingMm: number,
-  diameterMm = 100,
-  segments = 48,
+    face: [Vec3, Vec3, Vec3],
+    hubHeightMm: number,
+    hubSpacingMm: number,
+    diameterMm = 100,
+    segments = 48,
 ): { heightPoint: Vec3; center: Vec3; normal: Vec3; circle: Vec3[] } {
-  const [steeringCorner, strutCorner, ballJoint] = face;
-  const strutRay: Vec3 = [
-    strutCorner[0] - ballJoint[0],
-    strutCorner[1] - ballJoint[1],
-    strutCorner[2] - ballJoint[2],
-  ];
-  const strutRayLength = Math.hypot(...strutRay);
-  if (strutRayLength < 1e-9) {
-    throw new Error("Hub face cannot be calculated from coincident points.");
-  }
-  const heightPoint: Vec3 = [
-    ballJoint[0] + strutRay[0] / strutRayLength * hubHeightMm,
-    ballJoint[1] + strutRay[1] / strutRayLength * hubHeightMm,
-    ballJoint[2] + strutRay[2] / strutRayLength * hubHeightMm,
-  ];
-  const firstEdge: Vec3 = [
-    steeringCorner[0] - ballJoint[0],
-    steeringCorner[1] - ballJoint[1],
-    steeringCorner[2] - ballJoint[2],
-  ];
-  const rawNormal: Vec3 = [
-    firstEdge[1] * strutRay[2] - firstEdge[2] * strutRay[1],
-    firstEdge[2] * strutRay[0] - firstEdge[0] * strutRay[2],
-    firstEdge[0] * strutRay[1] - firstEdge[1] * strutRay[0],
-  ];
-  const normalLength = Math.hypot(...rawNormal);
-  if (normalLength < 1e-9) {
-    throw new Error("Hub face cannot be calculated from collinear points.");
-  }
-  let normal: Vec3 = rawNormal.map((value) => value / normalLength) as Vec3;
-  const outwardSign = ballJoint[1] < 0 ? -1 : 1;
-  if (normal[1] * outwardSign < 0) {
-    normal = normal.map((value) => -value) as Vec3;
-  }
-  const center: Vec3 = [
-    heightPoint[0] + normal[0] * hubSpacingMm,
-    heightPoint[1] + normal[1] * hubSpacingMm,
-    heightPoint[2] + normal[2] * hubSpacingMm,
-  ];
-  const tangentLength = Math.hypot(...firstEdge);
-  const tangent: Vec3 = firstEdge.map((value) => value / tangentLength) as Vec3;
-  const bitangent: Vec3 = [
-    normal[1] * tangent[2] - normal[2] * tangent[1],
-    normal[2] * tangent[0] - normal[0] * tangent[2],
-    normal[0] * tangent[1] - normal[1] * tangent[0],
-  ];
-  const radius = diameterMm / 2;
-  const circle = Array.from({ length: segments }, (_, index): Vec3 => {
-    const angle = 2 * Math.PI * index / segments;
-    return [
-      center[0] + radius * (tangent[0] * Math.cos(angle) + bitangent[0] * Math.sin(angle)),
-      center[1] + radius * (tangent[1] * Math.cos(angle) + bitangent[1] * Math.sin(angle)),
-      center[2] + radius * (tangent[2] * Math.cos(angle) + bitangent[2] * Math.sin(angle)),
+    const [steeringCorner, strutCorner, ballJoint] = face;
+    const strutRay: Vec3 = [
+        strutCorner[0] - ballJoint[0],
+        strutCorner[1] - ballJoint[1],
+        strutCorner[2] - ballJoint[2],
     ];
-  });
-  return { heightPoint, center, normal, circle };
+    const strutRayLength = Math.hypot(...strutRay);
+    if (strutRayLength < 1e-9) {
+        throw new Error("Hub face cannot be calculated from coincident points.");
+    }
+    const heightPoint: Vec3 = [
+        ballJoint[0] + strutRay[0] / strutRayLength * hubHeightMm,
+        ballJoint[1] + strutRay[1] / strutRayLength * hubHeightMm,
+        ballJoint[2] + strutRay[2] / strutRayLength * hubHeightMm,
+    ];
+    const firstEdge: Vec3 = [
+        steeringCorner[0] - ballJoint[0],
+        steeringCorner[1] - ballJoint[1],
+        steeringCorner[2] - ballJoint[2],
+    ];
+    const rawNormal: Vec3 = [
+        firstEdge[1] * strutRay[2] - firstEdge[2] * strutRay[1],
+        firstEdge[2] * strutRay[0] - firstEdge[0] * strutRay[2],
+        firstEdge[0] * strutRay[1] - firstEdge[1] * strutRay[0],
+    ];
+    const normalLength = Math.hypot(...rawNormal);
+    if (normalLength < 1e-9) {
+        throw new Error("Hub face cannot be calculated from collinear points.");
+    }
+    let normal: Vec3 = rawNormal.map((value) => value / normalLength) as Vec3;
+    const outwardSign = ballJoint[1] < 0 ? -1 : 1;
+    if (normal[1] * outwardSign < 0) {
+        normal = normal.map((value) => -value) as Vec3;
+    }
+    const center: Vec3 = [
+        heightPoint[0] + normal[0] * hubSpacingMm,
+        heightPoint[1] + normal[1] * hubSpacingMm,
+        heightPoint[2] + normal[2] * hubSpacingMm,
+    ];
+    const tangentLength = Math.hypot(...firstEdge);
+    const tangent: Vec3 = firstEdge.map((value) => value / tangentLength) as Vec3;
+    const bitangent: Vec3 = [
+        normal[1] * tangent[2] - normal[2] * tangent[1],
+        normal[2] * tangent[0] - normal[0] * tangent[2],
+        normal[0] * tangent[1] - normal[1] * tangent[0],
+    ];
+    const radius = diameterMm / 2;
+    const circle = Array.from({length: segments}, (_, index): Vec3 => {
+        const angle = 2 * Math.PI * index / segments;
+        return [
+            center[0] + radius * (tangent[0] * Math.cos(angle) + bitangent[0] * Math.sin(angle)),
+            center[1] + radius * (tangent[1] * Math.cos(angle) + bitangent[1] * Math.sin(angle)),
+            center[2] + radius * (tangent[2] * Math.cos(angle) + bitangent[2] * Math.sin(angle)),
+        ];
+    });
+    return {heightPoint, center, normal, circle};
 }
 
 export function tireOverallDiameterMm(
-  wheelDiameterIn: number,
-  tireSectionWidthMm: number,
-  tireAspectRatio: number,
+    wheelDiameterIn: number,
+    tireSectionWidthMm: number,
+    tireAspectRatio: number,
 ): number {
-  return wheelDiameterIn * 25.4 + 2 * tireSectionWidthMm * tireAspectRatio / 100;
+    return wheelDiameterIn * 25.4 + 2 * tireSectionWidthMm * tireAspectRatio / 100;
 }
 
 export function tireTreadCenter(
-  hubFaceCenter: Vec3,
-  hubFaceNormal: Vec3,
-  wheelOffsetMm: number,
+    hubFaceCenter: Vec3,
+    hubFaceNormal: Vec3,
+    wheelOffsetMm: number,
 ): Vec3 {
-  return [
-    hubFaceCenter[0] + hubFaceNormal[0] * wheelOffsetMm,
-    hubFaceCenter[1] + hubFaceNormal[1] * wheelOffsetMm,
-    hubFaceCenter[2] + hubFaceNormal[2] * wheelOffsetMm,
-  ];
+    return [
+        hubFaceCenter[0] + hubFaceNormal[0] * wheelOffsetMm,
+        hubFaceCenter[1] + hubFaceNormal[1] * wheelOffsetMm,
+        hubFaceCenter[2] + hubFaceNormal[2] * wheelOffsetMm,
+    ];
 }
 
 export interface WheelAlignmentMeasurements {
-  toeMm: [number, number] | null;
-  totalToeMm: number | null;
-  camberDeg: [number, number];
-  casterDeg: [number, number];
-  scrubRadiusMm: [number | null, number | null];
-  motionRatio: [number | null, number | null];
-  wheelRateNPerMm: [number | null, number | null];
+    toeMm: [number, number] | null;
+    totalToeMm: number | null;
+    camberDeg: [number, number];
+    casterDeg: [number, number];
+    scrubRadiusMm: [number | null, number | null];
+    motionRatio: [number | null, number | null];
+    wheelRateNPerMm: [number | null, number | null];
 }
 
 export function suspensionMotionRatios(
-  project: SuspensionProject,
+    project: SuspensionProject,
 ): [number | null, number | null] {
-  const { frontLowerControlArmPickup: pickup, frontControlArm: arm, steeringRack, frontTopMount, wheelKnuckle, wheelTire } = project;
-  const rackPivots = steeringRackPivotPoints(
-    steeringRack.widthMm,
-    steeringRack.centerlineHeightMm,
-    steeringRack.centerlineOffsetMm,
-    steeringRack.rackTravelMm,
-  );
-  const topMounts = frontTopMountPoints(frontTopMount.widthMm, frontTopMount.heightMm, frontTopMount.offsetMm);
-  const perturbationRad = 1e-4;
-  const sample = (side: 0 | 1, angle: number): { strutLength: number; wheelCenterHeight: number } => {
-    const rotations: [number, number] = [arm.leftRotationRad, arm.rightRotationRad];
-    rotations[side] = angle;
-    const points = controlArmPickupPoints(
-      pickup.widthMm,
-      pickup.rearWidthMm,
-      pickup.frontHeightMm,
-      pickup.rearHeightMm,
-      pickup.controlArmDepthMm,
-      arm.lengthMm,
-      arm.ballJointOffsetMm,
-      rotations[0],
-      rotations[1],
+    const {
+        frontLowerControlArmPickup: pickup,
+        frontControlArm: arm,
+        steeringRack,
+        frontTopMount,
+        wheelKnuckle,
+        wheelTire
+    } = project;
+    const rackPivots = steeringRackPivotPoints(
+        steeringRack.widthMm,
+        steeringRack.centerlineHeightMm,
+        steeringRack.centerlineOffsetMm,
+        steeringRack.rackTravelMm,
     );
-    const knuckle = tieRodConstrainedKnucklePoints(
-      points.ballJoint,
-      rackPivots,
-      topMounts,
-      wheelKnuckle.steeringPivotHeightMm,
-      wheelKnuckle.steeringPivotDepthMm,
-      wheelKnuckle.steeringPivotOffsetMm,
-      wheelKnuckle.strutMountHeightMm,
-      wheelKnuckle.strutMountOffsetMm,
-      wheelKnuckle.strutMountLocationMm,
-      -wheelKnuckle.strutMountAngleDeg,
-      steeringRack.tieRodLengthMm,
-      wheelKnuckle.strutMinLengthMm,
-      wheelKnuckle.strutMaxLengthMm,
-    );
-    const neutralSteeringPivots = steeringKnucklePivotPoints(
-      points.ballJoint,
-      wheelKnuckle.steeringPivotHeightMm,
-      wheelKnuckle.steeringPivotDepthMm,
-      wheelKnuckle.steeringPivotOffsetMm,
-    );
-    const neutralStrutMounts = strutMountPoints(
-      points.ballJoint,
-      wheelKnuckle.strutMountHeightMm,
-      wheelKnuckle.strutMountOffsetMm,
-      wheelKnuckle.strutMountLocationMm,
-    );
-    const faces = steeredHubFacePoints(
-      points.ballJoint,
-      neutralSteeringPivots,
-      neutralStrutMounts,
-      wheelKnuckle.steeringPivotOffsetMm,
-      wheelKnuckle.strutMountLocationMm,
-      knuckle.orientations,
-    );
-    const trueFace = trueHubFaceGeometry(faces[side], wheelKnuckle.hubHeightMm, wheelKnuckle.hubSpacingMm);
-    const tireCenter = tireTreadCenter(trueFace.center, trueFace.normal, wheelTire.wheelOffsetMm);
-    return { strutLength: knuckle.strutLengths[side], wheelCenterHeight: tireCenter[2] };
-  };
-  return [0, 1].map((sideIndex) => {
-    const side = sideIndex as 0 | 1;
-    try {
-      const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
-      const lower = sample(side, currentAngle - perturbationRad);
-      const upper = sample(side, currentAngle + perturbationRad);
-      const wheelTravel = Math.abs(upper.wheelCenterHeight - lower.wheelCenterHeight);
-      if (wheelTravel < 1e-8) return null;
-      const ratio = Math.abs(upper.strutLength - lower.strutLength) / wheelTravel;
-      return Number.isFinite(ratio) ? ratio : null;
-    } catch (error) {
-      if (isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) return null;
-      throw error;
-    }
-  }) as [number | null, number | null];
+    const topMounts = frontTopMountPoints(frontTopMount.widthMm, frontTopMount.heightMm, frontTopMount.offsetMm);
+    const perturbationRad = 1e-4;
+    const sample = (side: 0 | 1, angle: number): { strutLength: number; wheelCenterHeight: number } => {
+        const rotations: [number, number] = [arm.leftRotationRad, arm.rightRotationRad];
+        rotations[side] = angle;
+        const points = controlArmPickupPoints(
+            pickup.widthMm,
+            pickup.rearWidthMm,
+            pickup.frontHeightMm,
+            pickup.rearHeightMm,
+            pickup.controlArmDepthMm,
+            arm.lengthMm,
+            arm.ballJointOffsetMm,
+            rotations[0],
+            rotations[1],
+        );
+        const knuckle = tieRodConstrainedKnucklePoints(
+            points.ballJoint,
+            rackPivots,
+            topMounts,
+            wheelKnuckle.steeringPivotHeightMm,
+            wheelKnuckle.steeringPivotDepthMm,
+            wheelKnuckle.steeringPivotOffsetMm,
+            wheelKnuckle.strutMountHeightMm,
+            wheelKnuckle.strutMountOffsetMm,
+            wheelKnuckle.strutMountLocationMm,
+            -wheelKnuckle.strutMountAngleDeg,
+            steeringRack.tieRodLengthMm,
+            wheelKnuckle.strutMinLengthMm,
+            wheelKnuckle.strutMaxLengthMm,
+        );
+        const neutralSteeringPivots = steeringKnucklePivotPoints(
+            points.ballJoint,
+            wheelKnuckle.steeringPivotHeightMm,
+            wheelKnuckle.steeringPivotDepthMm,
+            wheelKnuckle.steeringPivotOffsetMm,
+        );
+        const neutralStrutMounts = strutMountPoints(
+            points.ballJoint,
+            wheelKnuckle.strutMountHeightMm,
+            wheelKnuckle.strutMountOffsetMm,
+            wheelKnuckle.strutMountLocationMm,
+        );
+        const faces = steeredHubFacePoints(
+            points.ballJoint,
+            neutralSteeringPivots,
+            neutralStrutMounts,
+            wheelKnuckle.steeringPivotOffsetMm,
+            wheelKnuckle.strutMountLocationMm,
+            knuckle.orientations,
+        );
+        const trueFace = trueHubFaceGeometry(faces[side], wheelKnuckle.hubHeightMm, wheelKnuckle.hubSpacingMm);
+        const tireCenter = tireTreadCenter(trueFace.center, trueFace.normal, wheelTire.wheelOffsetMm);
+        return {strutLength: knuckle.strutLengths[side], wheelCenterHeight: tireCenter[2]};
+    };
+    return [0, 1].map((sideIndex) => {
+        const side = sideIndex as 0 | 1;
+        try {
+            const currentAngle = side === 0 ? arm.leftRotationRad : arm.rightRotationRad;
+            const lower = sample(side, currentAngle - perturbationRad);
+            const upper = sample(side, currentAngle + perturbationRad);
+            const wheelTravel = Math.abs(upper.wheelCenterHeight - lower.wheelCenterHeight);
+            if (wheelTravel < 1e-8) return null;
+            const ratio = Math.abs(upper.strutLength - lower.strutLength) / wheelTravel;
+            return Number.isFinite(ratio) ? ratio : null;
+        } catch (error) {
+            if (isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) return null;
+            throw error;
+        }
+    }) as [number | null, number | null];
 }
 
 export function wheelAlignmentMeasurements(
-  wheelFaceNormals: [Vec3, Vec3],
-  ballJoints: [Vec3, Vec3],
-  topMounts: [Vec3, Vec3],
-  tireDiameterMm: number,
-  tireCenters: [Vec3, Vec3] | null = null,
-  motionRatio: [number | null, number | null] = [null, null],
-  springRateNPerMm = 50,
+    wheelFaceNormals: [Vec3, Vec3],
+    ballJoints: [Vec3, Vec3],
+    topMounts: [Vec3, Vec3],
+    tireDiameterMm: number,
+    tireCenters: [Vec3, Vec3] | null = null,
+    motionRatio: [number | null, number | null] = [null, null],
+    springRateNPerMm = 50,
 ): WheelAlignmentMeasurements {
-  const toeMm = wheelFaceNormals.map((normal) =>
-    normal[0] / Math.abs(normal[1]) * tireDiameterMm
-  ) as [number, number];
-  const camberDeg = wheelFaceNormals.map((normal) =>
-    Math.asin(Math.max(-1, Math.min(1, -normal[2]))) * 180 / Math.PI
-  ) as [number, number];
-  const casterDeg = ballJoints.map((ballJoint, index) =>
-    Math.atan2(
-      ballJoint[0] - topMounts[index][0],
-      topMounts[index][2] - ballJoint[2],
-    ) * 180 / Math.PI
-  ) as [number, number];
-  const scrubRadiusMm: [number | null, number | null] = tireCenters
-    ? ballJoints.map((ballJoint, index) => {
-      const verticalAxisSpan = topMounts[index][2] - ballJoint[2];
-      if (Math.abs(verticalAxisSpan) < 1e-9) return null;
-      const groundIntersectionRatio = -ballJoint[2] / verticalAxisSpan;
-      const steeringAxisGroundY = ballJoint[1] +
-        (topMounts[index][1] - ballJoint[1]) * groundIntersectionRatio;
-      const outwardSign = index === 0 ? 1 : -1;
-      return (tireCenters[index][1] - steeringAxisGroundY) * outwardSign;
-    }) as [number | null, number | null]
-    : [null, null];
-  const wheelRateNPerMm = motionRatio.map((ratio) =>
-    ratio === null ? null : springRateNPerMm * ratio ** 2
-  ) as [number | null, number | null];
-  return {
-    toeMm,
-    totalToeMm: toeMm ? toeMm[0] + toeMm[1] : null,
-    camberDeg,
-    casterDeg,
-    scrubRadiusMm,
-    motionRatio,
-    wheelRateNPerMm,
-  };
+    const toeMm = wheelFaceNormals.map((normal) =>
+        normal[0] / Math.abs(normal[1]) * tireDiameterMm
+    ) as [number, number];
+    const camberDeg = wheelFaceNormals.map((normal) =>
+        Math.asin(Math.max(-1, Math.min(1, -normal[2]))) * 180 / Math.PI
+    ) as [number, number];
+    const casterDeg = ballJoints.map((ballJoint, index) =>
+        Math.atan2(
+            ballJoint[0] - topMounts[index][0],
+            topMounts[index][2] - ballJoint[2],
+        ) * 180 / Math.PI
+    ) as [number, number];
+    const scrubRadiusMm: [number | null, number | null] = tireCenters
+        ? ballJoints.map((ballJoint, index) => {
+            const verticalAxisSpan = topMounts[index][2] - ballJoint[2];
+            if (Math.abs(verticalAxisSpan) < 1e-9) return null;
+            const groundIntersectionRatio = -ballJoint[2] / verticalAxisSpan;
+            const steeringAxisGroundY = ballJoint[1] +
+                (topMounts[index][1] - ballJoint[1]) * groundIntersectionRatio;
+            const outwardSign = index === 0 ? 1 : -1;
+            return (tireCenters[index][1] - steeringAxisGroundY) * outwardSign;
+        }) as [number | null, number | null]
+        : [null, null];
+    const wheelRateNPerMm = motionRatio.map((ratio) =>
+        ratio === null ? null : springRateNPerMm * ratio ** 2
+    ) as [number | null, number | null];
+    return {
+        toeMm,
+        totalToeMm: toeMm ? toeMm[0] + toeMm[1] : null,
+        camberDeg,
+        casterDeg,
+        scrubRadiusMm,
+        motionRatio,
+        wheelRateNPerMm,
+    };
 }

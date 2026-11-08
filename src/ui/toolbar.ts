@@ -1,5 +1,5 @@
 export function renderToolbar(): string {
-  return `
+    return `
   <header class="topbar">
     <a class="brand" href="#" aria-label="Suspension Lab home"><span class="brand-mark">S</span><span>Suspension<span class="brand-light">Lab</span></span></a>
     <div class="project-controls">
@@ -22,7 +22,7 @@ export function renderToolbar(): string {
 
 
 export function renderTemplateDialog(): string {
-  return `  <dialog id="template-dialog" class="template-dialog" aria-labelledby="template-heading">
+    return `  <dialog id="template-dialog" class="template-dialog" aria-labelledby="template-heading">
     <form id="template-form">
       <h2 id="template-heading">New project</h2>
       <label for="template-select">Choose a template</label>
@@ -37,4 +37,3 @@ export function renderTemplateDialog(): string {
   </dialog>
 `;
 }
-

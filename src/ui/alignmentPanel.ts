@@ -36,4 +36,3 @@ export function renderAlignmentPanel(): string {
       </section>
 `;
 }
-

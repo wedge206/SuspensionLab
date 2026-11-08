@@ -1,11 +1,11 @@
-import { renderToolbar, renderTemplateDialog } from "./toolbar";
-import { renderSidebar } from "./sidebar";
-import { renderAlignmentPanel } from "./alignmentPanel";
+import {renderToolbar, renderTemplateDialog} from "./toolbar";
+import {renderSidebar} from "./sidebar";
+import {renderAlignmentPanel} from "./alignmentPanel";
 
-export { renderToolbar, renderSidebar, renderAlignmentPanel };
+export {renderToolbar, renderSidebar, renderAlignmentPanel};
 
 export function renderPage(): string {
-  return `${renderToolbar()}${renderTemplateDialog()}  <main class="workspace">
+    return `${renderToolbar()}${renderTemplateDialog()}  <main class="workspace">
 ${renderSidebar()}    <section class="analysis-area">
       <div class="viewport" id="viewport" aria-label="3D suspension model with control arms, tie rods, knuckles, and struts">
         <label class="virtual-geometry-toggle" for="show-scrub-geometry">
@@ -19,4 +19,3 @@ ${renderAlignmentPanel()}    </section>
   <div id="notice" class="notice" role="status" aria-live="polite"></div>
 `;
 }
-

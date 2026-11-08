@@ -4,7 +4,7 @@
  * should propagate.
  */
 const GEOMETRY_ERROR_MESSAGES = {
-    rearArmsUnreachable: "Rear arm lengths cannot reach both outer mounts with the current geometry.",
+    rearArmsUnreachable: "Rear arm lengths cannot reach all outer mounts with the current geometry.",
     tieRodUnsatisfiable: "Tie Rod Length cannot be satisfied at the current ball joint position.",
     strutCannotReachTopMount: "Strut angle cannot reach the fixed top mount.",
 } as const;

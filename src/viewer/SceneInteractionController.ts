@@ -1,9 +1,26 @@
 import * as THREE from "three";
 import {
-    acceptedFrontAngle, acceptedRearOffset, clampRackTravel, frontConstraintViolation,
+    acceptedFrontAngle, acceptedRearPosition, clampRackTravel, frontConstraintViolation,
     MAX_CONTROL_ARM_DRAG_ANGLE_RAD,
 } from "../domain/dragConstraints";
 import type {SuspensionProject} from "../domain/types";
+
+export function rearPointerDisplacement(
+    pointer: THREE.Vector2, longitudinal: THREE.Vector2, vertical: THREE.Vector2,
+): {longitudinalMm: number; verticalMm: number} {
+    const determinant = longitudinal.x * vertical.y - longitudinal.y * vertical.x;
+    const scale = longitudinal.length() * vertical.length();
+    if (scale > 1e-8 && Math.abs(determinant) > scale * 0.05) {
+        return {
+            longitudinalMm: (pointer.x * vertical.y - pointer.y * vertical.x) / determinant,
+            verticalMm: (longitudinal.x * pointer.y - longitudinal.y * pointer.x) / determinant,
+        };
+    }
+    if (longitudinal.lengthSq() > vertical.lengthSq()) {
+        return {longitudinalMm: pointer.dot(longitudinal) / longitudinal.lengthSq(), verticalMm: 0};
+    }
+    return {longitudinalMm: 0, verticalMm: vertical.lengthSq() > 1e-8 ? pointer.dot(vertical) / vertical.lengthSq() : 0};
+}
 
 export interface SceneInteractionContext {
     readonly camera: THREE.PerspectiveCamera;
@@ -34,7 +51,10 @@ export interface SceneInteractionState {
     dragRotationRecoverySign: number;
     dragStartY: number;
     dragStartRearHeightOffsetMm: number;
-    rearVerticalPixelsPerMm: number;
+    dragStartRearLongitudinalOffsetMm: number;
+    dragStartRearPointerX: number;
+    rearLongitudinalScreenDirection: THREE.Vector2;
+    rearVerticalScreenDirection: THREE.Vector2;
     dragStartAngle: number;
     dragVerticalSign: number;
     dragChanged: boolean;
@@ -58,7 +78,10 @@ export class SceneInteractionController {
         dragRotationRecoverySign: 0,
         dragStartY: 0,
         dragStartRearHeightOffsetMm: 0,
-        rearVerticalPixelsPerMm: 1,
+        dragStartRearLongitudinalOffsetMm: 0,
+        dragStartRearPointerX: 0,
+        rearLongitudinalScreenDirection: new THREE.Vector2(),
+        rearVerticalScreenDirection: new THREE.Vector2(),
         dragStartAngle: 0,
         dragVerticalSign: 1,
         dragChanged: false,
@@ -151,13 +174,22 @@ export class SceneInteractionController {
                 this.state.draggingRearOuterMountIndex = rearIndex;
                 this.setHoveredRearOuterMount(rearIndex);
                 this.state.dragStartY = event.clientY;
+                this.state.dragStartRearPointerX = event.clientX;
                 this.state.dragChanged = false;
                 this.state.dragStartRearHeightOffsetMm = outer.z - this.project.rearHub.mainArmOuterMountStaticHeightMm;
+                this.state.dragStartRearLongitudinalOffsetMm = rearIndex === 0
+                    ? this.project.rearSuspension.leftLongitudinalOffsetMm
+                    : this.project.rearSuspension.rightLongitudinalOffsetMm;
                 const bounds = this.canvas.getBoundingClientRect();
                 const start = outer.clone().project(this.camera);
-                const end = outer.clone().add(new THREE.Vector3(0, 0, 1)).project(this.camera);
-                const pixelsPerMm = Math.abs(end.y - start.y) * bounds.height / 2;
-                this.state.rearVerticalPixelsPerMm = pixelsPerMm > 0.01 ? pixelsPerMm : 1;
+                const longitudinal = outer.clone().add(new THREE.Vector3(1, 0, 0)).project(this.camera);
+                const vertical = outer.clone().add(new THREE.Vector3(0, 0, 1)).project(this.camera);
+                this.state.rearLongitudinalScreenDirection.set(
+                    (longitudinal.x - start.x) * bounds.width / 2, -(longitudinal.y - start.y) * bounds.height / 2,
+                );
+                this.state.rearVerticalScreenDirection.set(
+                    (vertical.x - start.x) * bounds.width / 2, -(vertical.y - start.y) * bounds.height / 2,
+                );
                 this.controls.enabled = false;
                 this.canvas.style.cursor = "grabbing";
                 this.canvas.setPointerCapture(event.pointerId);
@@ -218,15 +250,26 @@ export class SceneInteractionController {
             event.preventDefault();
             event.stopImmediatePropagation();
             const index: 0 | 1 = this.state.draggingRearOuterMountIndex === 0 ? 0 : 1;
-            const requested = this.state.dragStartRearHeightOffsetMm +
-                (this.state.dragStartY - event.clientY) / this.state.rearVerticalPixelsPerMm;
-            const current = index === 0
-                ? this.project.rearSuspension.leftVerticalOffsetMm
-                : this.project.rearSuspension.rightVerticalOffsetMm;
-            const offset = acceptedRearOffset(this.project, index, requested);
-            if (Math.abs(offset - current) > 1e-10) this.state.dragChanged = true;
-            if (index === 0) this.project.rearSuspension.leftVerticalOffsetMm = offset;
-            else this.project.rearSuspension.rightVerticalOffsetMm = offset;
+            const delta = rearPointerDisplacement(
+                new THREE.Vector2(event.clientX - this.state.dragStartRearPointerX, event.clientY - this.state.dragStartY),
+                this.state.rearLongitudinalScreenDirection, this.state.rearVerticalScreenDirection,
+            );
+            const offset = acceptedRearPosition(this.project, index, {
+                verticalMm: this.state.dragStartRearHeightOffsetMm + delta.verticalMm,
+                longitudinalMm: this.state.dragStartRearLongitudinalOffsetMm + delta.longitudinalMm,
+            });
+            const rear = this.project.rearSuspension;
+            const currentVertical = index === 0 ? rear.leftVerticalOffsetMm : rear.rightVerticalOffsetMm;
+            const currentLongitudinal = index === 0 ? rear.leftLongitudinalOffsetMm : rear.rightLongitudinalOffsetMm;
+            if (Math.abs(offset.verticalMm - currentVertical) > 1e-10 ||
+                Math.abs(offset.longitudinalMm - currentLongitudinal) > 1e-10) this.state.dragChanged = true;
+            if (index === 0) {
+                rear.leftVerticalOffsetMm = offset.verticalMm;
+                rear.leftLongitudinalOffsetMm = offset.longitudinalMm;
+            } else {
+                rear.rightVerticalOffsetMm = offset.verticalMm;
+                rear.rightLongitudinalOffsetMm = offset.longitudinalMm;
+            }
             this.update(this.project);
             return;
         }

@@ -65,10 +65,12 @@ describe("built-in project templates", () => {
                 camberArmInnerMountHeightMm: 97,
                 camberArmInnerMountForwardOffsetMm: 189,
                 camberArmInnerMountWidthMm: 660,
+                camberArmLengthMm: 210,
                 mainArmInnerMountWidthMm: 400, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
                 toeArmInnerMountWidthMm: 685, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
                 mainArmLengthMm: 370, toeArmLengthMm: 210, leftRotationRad: 0, rightRotationRad: 0,
                 leftVerticalOffsetMm: 0, rightVerticalOffsetMm: 0,
+                leftLongitudinalOffsetMm: 0, rightLongitudinalOffsetMm: 0,
             },
             rearHub: {
                 camberArmOuterMountHeightMm: 97,

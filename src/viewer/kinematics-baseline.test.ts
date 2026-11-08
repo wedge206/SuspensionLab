@@ -45,7 +45,7 @@ describe("viewer kinematics behavior", () => {
         project.rearSuspension.mainArmLengthMm = 1;
         builder.update(solveSuspension(project));
         expect(builder.rearMainArmOuterMounts[0].visible).toBe(false);
-        expect(builder.geometryStatus.textContent).toContain("Rear arm lengths cannot reach both outer mounts");
+        expect(builder.geometryStatus.textContent).toContain("Rear arm lengths cannot reach all outer mounts");
         expect(alignment.mock.lastCall?.[0]).not.toBeNull();
 
         project.steeringRack.tieRodLengthMm = 1;
@@ -53,7 +53,7 @@ describe("viewer kinematics behavior", () => {
         expect(alignment.mock.lastCall?.[0]).toBeNull();
         expect(builder.geometryStatus.textContent).toContain("Tie Rod Length cannot be satisfied");
         expect(builder.steeringPivots[0].visible).toBe(false);
-        expect(builder.geometryStatus.textContent).toContain("Rear arm lengths cannot reach both outer mounts");
+        expect(builder.geometryStatus.textContent).toContain("Rear arm lengths cannot reach all outer mounts");
         expect(notices.mock.lastCall?.[1]).toBe("error");
         const noticeCount = notices.mock.calls.length;
         builder.update(solveSuspension(project));
@@ -80,26 +80,35 @@ describe("viewer kinematics behavior", () => {
         const materialDispose = vi.spyOn(builder.rearCamberArmOuterMounts[0].material, "dispose");
         const faceGeometryDispose = vi.spyOn(builder.rearHubFaces.geometry, "dispose");
         const faceMaterialDispose = vi.spyOn(builder.rearHubFaces.material, "dispose");
+        const armGeometryDispose = vi.spyOn(builder.rearCamberArms.geometry, "dispose");
+        const armMaterialDispose = vi.spyOn(builder.rearCamberArms.material, "dispose");
         expect(scene.children).toContain(builder.rearHubFaces);
-        for (const [height, forward, lateral, travel] of [[97, 189, 0, 0], [125, -20, 35, 40], [80, 70, -45, -40]]) {
-            project.rearHub.camberArmOuterMountHeightMm = height;
-            project.rearHub.camberArmOuterMountForwardOffsetMm = forward;
-            project.rearHub.camberArmOuterMountLateralOffsetMm = lateral;
+        expect(scene.children).toContain(builder.rearCamberArms);
+        for (const travel of [0, 20, -20]) {
             project.rearSuspension.leftVerticalOffsetMm = travel;
             builder.update(solveSuspension(project));
             const edges = builder.rearOuterMountConnections.geometry.getAttribute("position");
             const faces = builder.rearHubFaces.geometry.getAttribute("position");
+            const arms = builder.rearCamberArms.geometry.getAttribute("position");
             expect(edges.count).toBe(12);
             expect(faces.count).toBe(6);
+            expect(arms.count).toBe(4);
             expect(builder.rearHubFaces.visible).toBe(true);
+            expect(builder.rearCamberArms.visible).toBe(true);
             for (const side of [0, 1] as const) {
                 const main = builder.rearMainArmOuterMounts[side];
                 const toe = builder.rearToeArmOuterMounts[side];
                 const camber = builder.rearCamberArmOuterMounts[side];
                 expect(scene.children).toContain(camber);
                 expect(camber.visible).toBe(true);
-                expect(camber.position.z - main.position.z).toBeCloseTo(height);
-                expect(camber.position.distanceTo(main.position)).toBeCloseTo(Math.hypot(forward, lateral, height));
+                const inner = builder.rearCamberArmInnerMounts[side];
+                expect(camber.position.distanceTo(inner.position)).toBeCloseTo(project.rearSuspension.camberArmLengthMm);
+                expect(camber.position.distanceTo(main.position)).toBeCloseTo(Math.hypot(189, 97));
+                for (const [index, vertex] of [inner.position, camber.position].entries()) {
+                    for (const [axis, get] of [["x", "getX"], ["y", "getY"], ["z", "getZ"]] as const) {
+                        expect(arms[get](side * 2 + index)).toBeCloseTo(vertex[axis], 3);
+                    }
+                }
                 const vertices = [main.position, toe.position, camber.position];
                 for (const [index, vertex] of vertices.entries()) {
                     for (const [axis, get] of [["x", "getX"], ["y", "getY"], ["z", "getZ"]] as const) {
@@ -118,15 +127,19 @@ describe("viewer kinematics behavior", () => {
         expect(builder.rearCamberArmOuterMounts.every((mount) => !mount.visible)).toBe(true);
         expect(builder.rearHubFaces.visible).toBe(false);
         expect(builder.rearOuterMountConnections.visible).toBe(false);
+        expect(builder.rearCamberArms.visible).toBe(false);
         project.rearSuspension.mainArmLengthMm = 370;
         builder.update(solveSuspension(project));
         expect(builder.rearCamberArmOuterMounts.every((mount) => mount.visible)).toBe(true);
         expect(builder.rearHubFaces.visible).toBe(true);
         expect(builder.rearOuterMountConnections.visible).toBe(true);
+        expect(builder.rearCamberArms.visible).toBe(true);
         builder.dispose();
         expect(geometryDispose).toHaveBeenCalledOnce();
         expect(materialDispose).toHaveBeenCalledOnce();
         expect(faceGeometryDispose).toHaveBeenCalledOnce();
         expect(faceMaterialDispose).toHaveBeenCalledOnce();
+        expect(armGeometryDispose).toHaveBeenCalledOnce();
+        expect(armMaterialDispose).toHaveBeenCalledOnce();
     });
 });

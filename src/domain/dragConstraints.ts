@@ -1,6 +1,6 @@
 import {
-    controlArmPickupPoints, frontTopMountPoints, rearMainArmInnerMountPoints, rearMainArmOuterMountPoints,
-    rearToeArmInnerMountPoints, rearTrailingArmMountPoints, solveRearArmMounts, steeringRackPivotPoints,
+    controlArmPickupPoints, frontTopMountPoints, rearCamberArmInnerMountPoints, rearMainArmInnerMountPoints, rearMainArmOuterMountPoints,
+    rearToeArmInnerMountPoints, rearTrailingArmMountPoints, solveRearHubMounts, steeringRackPivotPoints,
     steeringRackTravelLimitMm, tieRodConstrainedKnucklePoints,
 } from "./coordinates";
 import {FRONT_GEOMETRY_ERROR_CODES, isGeometryError, REAR_GEOMETRY_ERROR_CODES} from "./geometryError";
@@ -66,20 +66,37 @@ export function acceptedFrontAngle(
     return accepted + angleDelta * validFraction;
 }
 
-export function rearHeightReachable(project: SuspensionProject, index: 0 | 1, offset: number): boolean {
+export interface RearDragOffset {
+    longitudinalMm: number;
+    verticalMm: number;
+}
+
+export function rearPositionReachable(project: SuspensionProject, index: 0 | 1, offset: RearDragOffset): boolean {
     const rear = project.rearSuspension;
     const hub = project.rearHub;
     const inner = rearMainArmInnerMountPoints(rear.frontToRearLengthMm, rear.mainArmInnerMountWidthMm, rear.mainArmInnerMountHeightMm);
     const toe = rearToeArmInnerMountPoints(inner, rear.toeArmInnerMountWidthMm, rear.toeArmInnerMountHeightMm, rear.toeArmMainArmWidthMm);
+    const camber = rearCamberArmInnerMountPoints(
+        inner, rear.camberArmInnerMountHeightMm, rear.camberArmInnerMountForwardOffsetMm, rear.camberArmInnerMountWidthMm,
+    );
     const trailing = rearTrailingArmMountPoints(inner, hub.trailingArmMountWidthMm, hub.trailingArmMountHeightMm, hub.trailingArmMountForwardOffsetMm);
     const nominal = rearMainArmOuterMountPoints(
         inner, trailing, rear.mainArmLengthMm, hub.trailingArmLengthMm, hub.mainArmOuterMountStaticHeightMm,
-        index === 0 ? offset : rear.leftVerticalOffsetMm, index === 1 ? offset : rear.rightVerticalOffsetMm,
+        index === 0 ? offset.verticalMm : rear.leftVerticalOffsetMm,
+        index === 1 ? offset.verticalMm : rear.rightVerticalOffsetMm,
     );
     try {
-        solveRearArmMounts(
+        solveRearHubMounts(
             inner, toe, nominal, rear.mainArmLengthMm, rear.toeArmLengthMm, hub.toeArmOuterMountHeightOffsetMm,
             hub.toeArmOuterMountForwardOffsetMm, hub.toeArmOuterMountLateralOffsetMm, hub.mainArmOuterMountStaticHeightMm,
+            {
+                innerMounts: camber, lengthMm: rear.camberArmLengthMm, heightMm: hub.camberArmOuterMountHeightMm,
+                forwardOffsetMm: hub.camberArmOuterMountForwardOffsetMm, lateralOffsetMm: hub.camberArmOuterMountLateralOffsetMm,
+            },
+            [
+                index === 0 ? offset.longitudinalMm : rear.leftLongitudinalOffsetMm,
+                index === 1 ? offset.longitudinalMm : rear.rightLongitudinalOffsetMm,
+            ],
         );
         return true;
     } catch (error) {
@@ -88,32 +105,60 @@ export function rearHeightReachable(project: SuspensionProject, index: 0 | 1, of
     }
 }
 
-export function acceptedRearOffset(project: SuspensionProject, index: 0 | 1, requested: number): number {
+export function rearHeightReachable(project: SuspensionProject, index: 0 | 1, offset: number): boolean {
     const rear = project.rearSuspension;
-    const current = index === 0 ? rear.leftVerticalOffsetMm : rear.rightVerticalOffsetMm;
-    const innerHeight = rear.mainArmInnerMountHeightMm;
-    const staticHeight = project.rearHub.mainArmOuterMountStaticHeightMm;
-    const length = rear.mainArmLengthMm;
-    const target = Math.max(innerHeight - length - staticHeight, Math.min(innerHeight + length - staticHeight, requested));
+    return rearPositionReachable(project, index, {
+        verticalMm: offset,
+        longitudinalMm: index === 0 ? rear.leftLongitudinalOffsetMm : rear.rightLongitudinalOffsetMm,
+    });
+}
+
+export function acceptedRearPosition(project: SuspensionProject, index: 0 | 1, requested: RearDragOffset): RearDragOffset {
+    const rear = project.rearSuspension;
+    const current: RearDragOffset = index === 0
+        ? {verticalMm: rear.leftVerticalOffsetMm, longitudinalMm: rear.leftLongitudinalOffsetMm}
+        : {verticalMm: rear.rightVerticalOffsetMm, longitudinalMm: rear.rightLongitudinalOffsetMm};
+    const minHeight = rear.mainArmInnerMountHeightMm - rear.mainArmLengthMm - project.rearHub.mainArmOuterMountStaticHeightMm;
+    const maxHeight = rear.mainArmInnerMountHeightMm + rear.mainArmLengthMm - project.rearHub.mainArmOuterMountStaticHeightMm;
+    const target = {
+        verticalMm: Math.max(minHeight, Math.min(maxHeight, requested.verticalMm)),
+        longitudinalMm: requested.longitudinalMm,
+    };
     let offset = current;
-    const steps = Math.min(2048, Math.max(1, Math.ceil(Math.abs(target - current) / 5)));
+    const interpolate = (fraction: number): RearDragOffset => ({
+        verticalMm: current.verticalMm + (target.verticalMm - current.verticalMm) * fraction,
+        longitudinalMm: current.longitudinalMm + (target.longitudinalMm - current.longitudinalMm) * fraction,
+    });
+    const steps = Math.min(2048, Math.max(1, Math.ceil(Math.hypot(
+        target.verticalMm - current.verticalMm, target.longitudinalMm - current.longitudinalMm,
+    ) / 5)));
+    let validFraction = 0;
     for (let step = 1; step <= steps; step += 1) {
-        const candidate = current + (target - current) * step / steps;
-        if (rearHeightReachable(project, index, candidate)) {
+        const fraction = step / steps;
+        const candidate = interpolate(fraction);
+        if (rearPositionReachable(project, index, candidate)) {
             offset = candidate;
+            validFraction = fraction;
         } else {
-            let valid = offset;
-            let invalid = candidate;
+            let invalid = fraction;
             for (let iteration = 0; iteration < 30; iteration += 1) {
-                const middle = (valid + invalid) / 2;
-                if (rearHeightReachable(project, index, middle)) valid = middle;
+                const middle = (validFraction + invalid) / 2;
+                if (rearPositionReachable(project, index, interpolate(middle))) validFraction = middle;
                 else invalid = middle;
             }
-            offset = valid;
+            offset = interpolate(validFraction);
             break;
         }
     }
     return offset;
+}
+
+export function acceptedRearOffset(project: SuspensionProject, index: 0 | 1, requested: number): number {
+    const rear = project.rearSuspension;
+    return acceptedRearPosition(project, index, {
+        verticalMm: requested,
+        longitudinalMm: index === 0 ? rear.leftLongitudinalOffsetMm : rear.rightLongitudinalOffsetMm,
+    }).verticalMm;
 }
 
 export function clampRackTravel(project: SuspensionProject, requested: number): number {

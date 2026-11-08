@@ -336,6 +336,10 @@ export class SceneGeometryBuilder {
         new THREE.BufferGeometry(),
         new THREE.LineBasicMaterial({color: 0xe7d36b}),
     );
+    readonly rearCamberArms = new THREE.LineSegments(
+        new THREE.BufferGeometry(),
+        new THREE.LineBasicMaterial({color: 0xc98ce8}),
+    );
     readonly ballJoints = [
         new THREE.Mesh(new THREE.SphereGeometry(28, 24, 16), new THREE.MeshStandardMaterial({
             color: 0xe77858,
@@ -518,7 +522,8 @@ export class SceneGeometryBuilder {
             ...this.rearCamberArmInnerMounts, ...this.rearCamberArmOuterMounts,
             ...this.rearMainArmOuterMounts, ...this.rearToeArmInnerMounts,
             ...this.rearToeArmOuterMounts, ...this.rearTrailingArmMounts, this.rearMainArms,
-            this.rearOuterMountConnections, this.rearHubFaces, this.rearToeArms, ...this.ballJoints, ...this.steeringRackPivots,
+            this.rearOuterMountConnections, this.rearHubFaces, this.rearToeArms, this.rearCamberArms,
+            ...this.ballJoints, ...this.steeringRackPivots,
             ...this.topMountPoints, ...this.steeringPivots, ...this.hubFaces, this.hubFaceExtensions,
             this.hubConstructionLines, ...this.hubFaceCircles, ...this.tireTreads, ...this.tireGroundOutlines,
             ...this.steeringAxisGroundLines, ...this.tireCenterGroundLines,
@@ -570,7 +575,10 @@ export class SceneGeometryBuilder {
             this.rearToeArms.geometry.setFromPoints(toeArmMounts.flatMap((mount, index) => [
                 new THREE.Vector3(...mount), new THREE.Vector3(...toeArmOuterMounts[index]),
             ]));
-            for (const line of [this.rearMainArms, this.rearOuterMountConnections, this.rearToeArms]) {
+            this.rearCamberArms.geometry.setFromPoints(camberArmMounts.flatMap((mount, index) => [
+                new THREE.Vector3(...mount), new THREE.Vector3(...camberArmOuterMounts[index]),
+            ]));
+            for (const line of [this.rearMainArms, this.rearOuterMountConnections, this.rearToeArms, this.rearCamberArms]) {
                 line.geometry.computeBoundingSphere();
             }
             this.setRearArmVisibility(true);
@@ -789,12 +797,14 @@ export class SceneGeometryBuilder {
     setRearArmVisibility(visible: boolean): void {
         for (const object of [
             ...this.rearMainArmOuterMounts, ...this.rearCamberArmOuterMounts, ...this.rearToeArmOuterMounts,
-            this.rearMainArms, this.rearOuterMountConnections, this.rearHubFaces, this.rearToeArms,
+            this.rearMainArms, this.rearOuterMountConnections, this.rearHubFaces, this.rearToeArms, this.rearCamberArms,
         ]) object.visible = visible;
     }
 
 
     dispose(): void {
+        this.rearCamberArms.geometry.dispose();
+        this.rearCamberArms.material.dispose();
         this.rearHubFaces.geometry.dispose();
         this.rearHubFaces.material.dispose();
         for (const pickup of [

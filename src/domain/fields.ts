@@ -466,6 +466,18 @@ export const projectFields = {
                 step: "1"
             }
         },
+        camberArmLengthMm: {constraint: "positive",
+            ui: {
+                id: "rear-camber-arm-length",
+                group: "rear-0",
+                order: 36.5,
+                label: "Rear Camber Arm Length",
+                hint: "Fixed distance between camber arm mounts",
+                unit: "mm",
+                min: "1",
+                step: "1"
+            }
+        },
         mainArmInnerMountWidthMm: {constraint: "positive",
             ui: {
                 id: "rear-main-arm-inner-mount-width",
@@ -566,6 +578,8 @@ export const projectFields = {
         rightRotationRad: {constraint: "finite"},
         leftVerticalOffsetMm: {constraint: "finite"},
         rightVerticalOffsetMm: {constraint: "finite"},
+        leftLongitudinalOffsetMm: {constraint: "finite"},
+        rightLongitudinalOffsetMm: {constraint: "finite"},
     },
     rearHub: {
         camberArmOuterMountHeightMm: {constraint: "positive",
@@ -677,7 +691,7 @@ export const projectFields = {
                 group: "rear-1",
                 order: 51,
                 label: "Trailing Arm Length",
-                hint: "Longitudinal offset for the main arm outer mount",
+                hint: "Sets the static main arm outer mount reference",
                 unit: "mm",
                 min: "1",
                 step: "1"

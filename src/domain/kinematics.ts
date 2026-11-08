@@ -1,8 +1,7 @@
 import {
     controlArmPickupPoints, frontTopMountPoints, orientHubPoint, rearCamberArmInnerMountPoints,
-    rearCamberArmOuterMountPoints,
     rearMainArmInnerMountPoints, rearMainArmOuterMountPoints, rearToeArmInnerMountPoints,
-    rearTrailingArmMountPoints, solveRearArmMounts, steeredHubFacePoints, steeringKnucklePivotPoints,
+    rearTrailingArmMountPoints, solveRearHubMounts, steeredHubFacePoints, steeringKnucklePivotPoints,
     steeringRackPivotPoints, strutMountAngleSegments, strutMountPoints, suspensionMotionRatios,
     tieRodConstrainedKnucklePoints, tireOverallDiameterMm, tireTreadCenter, trueHubFaceGeometry,
     wheelAlignmentMeasurements,
@@ -55,23 +54,24 @@ export function solveSuspension(project: SuspensionProject) {
         rearMounts, trailingArmMounts, rear.mainArmLengthMm, hub.trailingArmLengthMm,
         hub.mainArmOuterMountStaticHeightMm, rear.leftVerticalOffsetMm, rear.rightVerticalOffsetMm,
     );
-    let rearSolution: ReturnType<typeof solveRearArmMounts> | null = null;
+    let rearSolution: ReturnType<typeof solveRearHubMounts> | null = null;
     let rearGeometryMessage = "";
     try {
-        rearSolution = solveRearArmMounts(
+        rearSolution = solveRearHubMounts(
             rearMounts, toeArmMounts, nominalOuterMounts, rear.mainArmLengthMm, rear.toeArmLengthMm,
             hub.toeArmOuterMountHeightOffsetMm, hub.toeArmOuterMountForwardOffsetMm,
             hub.toeArmOuterMountLateralOffsetMm, hub.mainArmOuterMountStaticHeightMm,
+            {
+                innerMounts: camberArmMounts, lengthMm: rear.camberArmLengthMm, heightMm: hub.camberArmOuterMountHeightMm,
+                forwardOffsetMm: hub.camberArmOuterMountForwardOffsetMm, lateralOffsetMm: hub.camberArmOuterMountLateralOffsetMm,
+            },
+            [rear.leftLongitudinalOffsetMm, rear.rightLongitudinalOffsetMm],
         );
     } catch (error) {
         if (!isGeometryError(error, REAR_GEOMETRY_ERROR_CODES)) throw error;
         rearGeometryMessage = error.message;
     }
-    const camberArmOuterMounts = rearSolution && rearCamberArmOuterMountPoints(
-        rearSolution, hub.toeArmOuterMountForwardOffsetMm, hub.toeArmOuterMountLateralOffsetMm,
-        hub.camberArmOuterMountHeightMm,
-        hub.camberArmOuterMountForwardOffsetMm, hub.camberArmOuterMountLateralOffsetMm,
-    );
+    const camberArmOuterMounts = rearSolution && rearSolution.camberOuterMounts;
     const rackPivots = steeringRackPivotPoints(
         rack.widthMm, rack.centerlineHeightMm, rack.centerlineOffsetMm, rack.rackTravelMm,
     );

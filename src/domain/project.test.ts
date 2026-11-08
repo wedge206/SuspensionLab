@@ -74,6 +74,19 @@ describe("project field contract", () => {
         });
     });
 
+    it("persists longitudinal drag offsets and defaults them for older projects", () => {
+        const project = createProjectFromTemplate("default", "Project", "project-id");
+        project.rearSuspension.leftLongitudinalOffsetMm = -35;
+        project.rearSuspension.rightLongitudinalOffsetMm = 40;
+        expect(validateProject(JSON.parse(JSON.stringify(project))).rearSuspension).toMatchObject({
+            leftLongitudinalOffsetMm: -35, rightLongitudinalOffsetMm: 40,
+        });
+        const {leftLongitudinalOffsetMm: _left, rightLongitudinalOffsetMm: _right, ...rearSuspension} = project.rearSuspension;
+        expect(validateProject({...project, rearSuspension}).rearSuspension).toMatchObject({
+            leftLongitudinalOffsetMm: 0, rightLongitudinalOffsetMm: 0,
+        });
+    });
+
     it("rejects a negative strut mount angle rather than normalizing it", () => {
         expect(() => validateProject({
             ...defaultTemplate, wheelKnuckle: {...defaultTemplate.wheelKnuckle, strutMountAngleDeg: -20},

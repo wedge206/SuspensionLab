@@ -201,6 +201,26 @@ describe("front lower control arm pickup points", () => {
                     expect(moved[0][1]).not.toBeCloseTo(staticPoints[0][1], 6);
                 });
 
+                it("places the main pivots at independently requested longitudinal and vertical offsets", () => {
+                    const inner = rearMainArmInnerMountPoints(1900, 400, 250);
+                    const toe = rearToeArmInnerMountPoints(inner, 685, 260, 201);
+                    const trailing = rearTrailingArmMountPoints(inner, 1160, 308, 460);
+                    const solve = (left: number, right: number, longitudinal: [number, number]) => solveRearArmMounts(
+                        inner, toe, rearMainArmOuterMountPoints(inner, trailing, 370, 455, 240, left, right),
+                        370, 210, 0, 200, 10, 240, longitudinal,
+                    ).mainOuterMounts;
+                    const reference = solve(0, 0, [0, 0]);
+                    const moved = solve(40, -40, [30, -30]);
+                    const distance = (a: number[], b: number[]) =>
+                        Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+                    for (const side of [0, 1] as const) {
+                        expect(moved[side][0] - reference[side][0]).toBeCloseTo(side === 0 ? 30 : -30, 8);
+                        expect(moved[side][2] - reference[side][2]).toBeCloseTo(side === 0 ? 40 : -40, 8);
+                        expect(distance(moved[side], inner[side])).toBeCloseTo(370, 8);
+                        expect(distance(moved[side], trailing[side])).not.toBeCloseTo(distance(reference[side], trailing[side]), 5);
+                    }
+                });
+
                 it("rejects impossible and indeterminate arm geometry", () => {
                     const inner = rearMainArmInnerMountPoints(1900, 400, 250);
                     const trailing = rearTrailingArmMountPoints(inner, 1160, 308, 460);
@@ -719,10 +739,12 @@ describe("front lower control arm pickup points", () => {
                 camberArmInnerMountHeightMm: 97,
                 camberArmInnerMountForwardOffsetMm: 250,
                 camberArmInnerMountWidthMm: 660,
+                camberArmLengthMm: 210,
                 mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
                 toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
                 mainArmLengthMm: 420, toeArmLengthMm: 225, leftRotationRad: 0, rightRotationRad: 0,
                 leftVerticalOffsetMm: 0, rightVerticalOffsetMm: 0,
+                leftLongitudinalOffsetMm: 0, rightLongitudinalOffsetMm: 0,
             },
             rearHub: {
                 camberArmOuterMountHeightMm: 97,

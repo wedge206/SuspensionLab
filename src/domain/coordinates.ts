@@ -169,6 +169,7 @@ export function solveRearArmMounts(
     forwardOffsetMm: number,
     lateralOffsetMm: number,
     staticHeightMm: number,
+    longitudinalOffsets: [number, number] = [0, 0],
 ): RearArmSolution {
     const mainPoints: Vec3[] = [];
     const toePoints: Vec3[] = [];
@@ -176,16 +177,22 @@ export function solveRearArmMounts(
         const main = mainMounts[side];
         const toe = toeMounts[side];
         const nominal = nominalOuterMounts[side];
-        const deltaX = nominal[0] - main[0];
         const deltaZ = nominal[2] - main[2];
-        const lateralSquared = mainLengthMm ** 2 - deltaX ** 2 - deltaZ ** 2;
+        const horizontalSquared = mainLengthMm ** 2 - deltaZ ** 2;
         const toeHeight = nominal[2] + heightOffsetMm;
         const toeHorizontalSquared = toeLengthMm ** 2 - (toeHeight - toe[2]) ** 2;
-        if (lateralSquared < -1e-8 || toeHorizontalSquared < -1e-8) {
+        if (horizontalSquared < -1e-8 || toeHorizontalSquared < -1e-8) {
             throw new GeometryError("rearArmsUnreachable");
         }
+        const referenceX = nominal[0] - main[0];
+        const referenceLateral = Math.sqrt(Math.max(0,
+            mainLengthMm ** 2 - referenceX ** 2 - (staticHeightMm - main[2]) ** 2));
+        const referenceY = (side === 0 ? 1 : -1) * referenceLateral;
+        const x = referenceX + longitudinalOffsets[side];
+        const lateralSquared = horizontalSquared - x ** 2;
+        if (lateralSquared < -1e-8) throw new GeometryError("rearArmsUnreachable");
         const mainOuter: Vec3 = [
-            nominal[0], main[1] + (side === 0 ? 1 : -1) * Math.sqrt(Math.max(0, lateralSquared)), nominal[2],
+            main[0] + x, main[1] + (side === 0 ? 1 : -1) * Math.sqrt(Math.max(0, lateralSquared)), nominal[2],
         ];
         const dx = toe[0] - mainOuter[0];
         const dy = toe[1] - mainOuter[1];
@@ -201,9 +208,9 @@ export function solveRearArmMounts(
         const ux = dx / distance;
         const uy = dy / distance;
         const nominalY = side === 0 ? -lateralOffsetMm : lateralOffsetMm;
-        const referenceLateral = Math.sqrt(Math.max(0, mainLengthMm ** 2 - deltaX ** 2 - (staticHeightMm - main[2]) ** 2));
-        const referenceDy = toe[1] - main[1] - (side === 0 ? 1 : -1) * referenceLateral;
-        const sideOfCenterLine = -forwardOffsetMm * referenceDy + nominalY * dx;
+        const referenceDy = toe[1] - main[1] - referenceY;
+        const referenceDx = toe[0] - main[0] - referenceX;
+        const sideOfCenterLine = -forwardOffsetMm * referenceDy + nominalY * referenceDx;
         const sign = sideOfCenterLine === 0 ? (side === 0 ? 1 : -1) : Math.sign(sideOfCenterLine);
         mainPoints.push(mainOuter);
         toePoints.push([
@@ -213,6 +220,107 @@ export function solveRearArmMounts(
         ]);
     }
     return {mainOuterMounts: [mainPoints[0], mainPoints[1]], toeOuterMounts: [toePoints[0], toePoints[1]]};
+}
+
+export interface RearCamberArmParameters {
+    innerMounts: [Vec3, Vec3];
+    lengthMm: number;
+    heightMm: number;
+    forwardOffsetMm: number;
+    lateralOffsetMm: number;
+}
+
+export function solveRearHubMounts(
+    mainMounts: [Vec3, Vec3],
+    toeMounts: [Vec3, Vec3],
+    nominalOuterMounts: [Vec3, Vec3],
+    mainLengthMm: number,
+    toeLengthMm: number,
+    heightOffsetMm: number,
+    forwardOffsetMm: number,
+    lateralOffsetMm: number,
+    staticHeightMm: number,
+    camber: RearCamberArmParameters,
+    longitudinalOffsets: [number, number] = [0, 0],
+): RearArmSolution & {camberOuterMounts: [Vec3, Vec3]} {
+    const solveBase = (nominal: [Vec3, Vec3]) => solveRearArmMounts(
+        mainMounts, toeMounts, nominal, mainLengthMm, toeLengthMm,
+        heightOffsetMm, forwardOffsetMm, lateralOffsetMm, staticHeightMm, longitudinalOffsets,
+    );
+    const solution = solveBase(nominalOuterMounts);
+    const neutralCamber = (base: RearArmSolution) => rearCamberArmOuterMountPoints(
+        base, forwardOffsetMm, lateralOffsetMm, camber.heightMm, camber.forwardOffsetMm, camber.lateralOffsetMm,
+    );
+
+    // Keep the same intersection branch as the static geometry during travel.
+    const staticNominal: [Vec3, Vec3] = [
+        [nominalOuterMounts[0][0], nominalOuterMounts[0][1], staticHeightMm],
+        [nominalOuterMounts[1][0], nominalOuterMounts[1][1], staticHeightMm],
+    ];
+    let staticSolution: RearArmSolution | null = null;
+    try {
+        staticSolution = solveBase(staticNominal);
+    } catch (error) {
+        if (!isGeometryError(error, ["rearArmsUnreachable"])) throw error;
+    }
+
+    const solveSide = (base: RearArmSolution, camberNeutral: [Vec3, Vec3], side: 0 | 1) => {
+        const main = base.mainOuterMounts[side];
+        const toe = base.toeOuterMounts[side];
+        const axisVector: Vec3 = [toe[0] - main[0], toe[1] - main[1], toe[2] - main[2]];
+        const axisLength = Math.hypot(...axisVector);
+        if (axisLength < 1e-9) throw new GeometryError("rearArmsUnreachable");
+        const axis: Vec3 = [axisVector[0] / axisLength, axisVector[1] / axisLength, axisVector[2] / axisLength];
+        const neutral: Vec3 = [
+            camberNeutral[side][0] - main[0], camberNeutral[side][1] - main[1], camberNeutral[side][2] - main[2],
+        ];
+        const projection = neutral[0] * axis[0] + neutral[1] * axis[1] + neutral[2] * axis[2];
+        const center: Vec3 = [main[0] + axis[0] * projection, main[1] + axis[1] * projection, main[2] + axis[2] * projection];
+        const radial: Vec3 = [neutral[0] - axis[0] * projection, neutral[1] - axis[1] * projection, neutral[2] - axis[2] * projection];
+        const tangent: Vec3 = [
+            axis[1] * radial[2] - axis[2] * radial[1],
+            axis[2] * radial[0] - axis[0] * radial[2],
+            axis[0] * radial[1] - axis[1] * radial[0],
+        ];
+        const q: Vec3 = [center[0] - camber.innerMounts[side][0], center[1] - camber.innerMounts[side][1], center[2] - camber.innerMounts[side][2]];
+        const a = q[0] * radial[0] + q[1] * radial[1] + q[2] * radial[2];
+        const b = q[0] * tangent[0] + q[1] * tangent[1] + q[2] * tangent[2];
+        const target = (camber.lengthMm ** 2 - q[0] ** 2 - q[1] ** 2 - q[2] ** 2 -
+            radial[0] ** 2 - radial[1] ** 2 - radial[2] ** 2) / 2;
+        const amplitude = Math.hypot(a, b);
+        if (amplitude < 1e-9) {
+            if (Math.abs(target) > 1e-7) throw new GeometryError("rearArmsUnreachable");
+            return {angles: [0, 0] as [number, number], center, radial, tangent};
+        }
+        const ratio = target / amplitude;
+        if (ratio < -1 - 1e-10 || ratio > 1 + 1e-10) throw new GeometryError("rearArmsUnreachable");
+        const phase = Math.atan2(b, a);
+        const angle = Math.acos(Math.max(-1, Math.min(1, ratio)));
+        return {angles: [phase + angle, phase - angle] as [number, number], center, radial, tangent};
+    };
+
+    const neutral = neutralCamber(solution);
+    const staticNeutral = staticSolution && neutralCamber(staticSolution);
+    const points = ([0, 1] as const).map((side): Vec3 => {
+        const current = solveSide(solution, neutral, side);
+        let reference = current;
+        if (staticSolution && staticNeutral) {
+            try {
+                reference = solveSide(staticSolution, staticNeutral, side);
+            } catch (error) {
+                if (!isGeometryError(error, ["rearArmsUnreachable"])) throw error;
+            }
+        }
+        const normalized = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
+        const branch = Math.abs(normalized(reference.angles[0])) <= Math.abs(normalized(reference.angles[1])) ? 0 : 1;
+        const angle = current.angles[branch];
+        return [
+            current.center[0] + current.radial[0] * Math.cos(angle) + current.tangent[0] * Math.sin(angle),
+            current.center[1] + current.radial[1] * Math.cos(angle) + current.tangent[1] * Math.sin(angle),
+            current.center[2] + current.radial[2] * Math.cos(angle) + current.tangent[2] * Math.sin(angle),
+        ];
+    });
+    return {...solution, camberOuterMounts: [points[0], points[1]]};
 }
 
 export function rearArmAxisEnd(mainMount: Vec3, trailingMount: Vec3, outerMount: Vec3): Vec3 {

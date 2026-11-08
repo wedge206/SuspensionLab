@@ -51,6 +51,8 @@
     "springRateNPerMm": 50
   },
   "rearSuspension": {
-    "mainArmInnerMountWidthMm": 750
+    "mainArmInnerMountWidthMm": 750,
+    "mainArmInnerMountHeightMm": 250,
+    "frontToRearLengthMm": 1600
   }
 }

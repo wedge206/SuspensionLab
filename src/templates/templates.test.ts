@@ -55,7 +55,7 @@ describe("built-in project templates", () => {
         tireAspectRatio: 65,
       },
       suspension: { springRateNPerMm: 50 },
-      rearSuspension: { mainArmInnerMountWidthMm: 750 },
+      rearSuspension: { mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600 },
     });
   });
 
@@ -63,11 +63,14 @@ describe("built-in project templates", () => {
     const project = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY, "Default", "existing-id");
     project.name = "Renamed";
     project.frontLowerControlArmPickup.widthMm = 700;
+    project.rearSuspension.mainArmInnerMountHeightMm = 300;
+    project.rearSuspension.frontToRearLengthMm = 1800;
 
     expect(resetProjectToTemplate(project, DEFAULT_TEMPLATE_KEY)).toMatchObject({
       id: "existing-id",
       name: "Renamed",
       frontLowerControlArmPickup: { widthMm: 465 },
+      rearSuspension: { mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600 },
     });
   });
 });

@@ -48,6 +48,16 @@ export function controlArmPickupPoints(
   };
 }
 
+export function rearMainArmInnerMountPoints(
+  frontToRearLengthMm: number,
+  widthMm: number,
+  heightMm: number,
+): [Vec3, Vec3] {
+  const x = FRONT_PICKUP_STATION_MM - frontToRearLengthMm;
+  const halfWidth = widthMm / 2;
+  return [[x, halfWidth, heightMm], [x, -halfWidth, heightMm]];
+}
+
 export function rotatePointAroundAxis(point: Vec3, axisStart: Vec3, axisEnd: Vec3, angle: number): Vec3 {
   const axis = normalize([
     axisEnd[0] - axisStart[0],

@@ -5,6 +5,7 @@ import {
   type HubOrientation,
   hubFacePoints,
   orientHubPoint,
+  rearMainArmInnerMountPoints,
   steeringKnucklePivotPoints,
   steeringRackPivotPoints,
   steeringRackTravelLimitMm,
@@ -31,6 +32,24 @@ describe("front lower control arm pickup points", () => {
     expect(points.rear[0][1] - points.rear[1][1]).toBe(550);
     expect(points.front.every((point) => point[2] === 240)).toBe(true);
     expect(points.rear.every((point) => point[2] === 210)).toBe(true);
+  });
+
+  describe("rear main arm inner mount points", () => {
+    it("places the default mounts rearward of the front mounts at the configured height and width", () => {
+      const front = controlArmPickupPoints(465, 465, 250, 250, 302, 320, 12).front;
+      const rear = rearMainArmInnerMountPoints(1600, 750, 250);
+      expect(rear).toEqual([[-950, 375, 250], [-950, -375, 250]]);
+      for (let side = 0; side < 2; side += 1) {
+        expect(front[side][0] - rear[side][0]).toBe(1600);
+      }
+      expect(rear[0][1] - rear[1][1]).toBe(750);
+    });
+
+    it("updates longitudinal position, spacing, and ground height independently", () => {
+      const rear = rearMainArmInnerMountPoints(1720, 840, 310);
+      expect(rear).toEqual([[-1070, 420, 310], [-1070, -420, 310]]);
+      expect(rear[0][1] - rear[1][1]).toBe(840);
+    });
   });
 
   it("uses control arm depth as the front-to-rear distance while keeping the front station fixed", () => {
@@ -520,7 +539,7 @@ describe("front lower control arm pickup points", () => {
         tireAspectRatio: 65,
       },
       suspension: { springRateNPerMm: 50 },
-      rearSuspension: { mainArmInnerMountWidthMm: 750 },
+      rearSuspension: { mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600 },
     };
 
     const ratios = suspensionMotionRatios(project);

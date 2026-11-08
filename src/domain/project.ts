@@ -74,6 +74,12 @@ export function validateProject(value: unknown): SuspensionProject {
     ? project.rearSuspension as Record<string, unknown>
     : {};
   const mainArmInnerMountWidthMm: unknown = rearSuspension.mainArmInnerMountWidthMm;
+  const mainArmInnerMountHeightMm: unknown = rearSuspension.mainArmInnerMountHeightMm === undefined
+    ? 250
+    : rearSuspension.mainArmInnerMountHeightMm;
+  const frontToRearLengthMm: unknown = rearSuspension.frontToRearLengthMm === undefined
+    ? 1600
+    : rearSuspension.frontToRearLengthMm;
   if (typeof widthMm !== "number" || !Number.isFinite(widthMm) || widthMm <= 0 ||
       typeof rearWidthMm !== "number" || !Number.isFinite(rearWidthMm) || rearWidthMm <= 0 ||
       typeof controlArmDepthMm !== "number" || !Number.isFinite(controlArmDepthMm) || controlArmDepthMm <= 0 ||
@@ -131,6 +137,14 @@ export function validateProject(value: unknown): SuspensionProject {
       !Number.isFinite(mainArmInnerMountWidthMm) || mainArmInnerMountWidthMm <= 0) {
     throw new Error("Main arm inner mount width must be a positive finite value.");
   }
+  if (typeof mainArmInnerMountHeightMm !== "number" ||
+      !Number.isFinite(mainArmInnerMountHeightMm) || mainArmInnerMountHeightMm <= 0) {
+    throw new Error("Main arm inner mount height must be a positive finite value.");
+  }
+  if (typeof frontToRearLengthMm !== "number" ||
+      !Number.isFinite(frontToRearLengthMm) || frontToRearLengthMm <= 0) {
+    throw new Error("Front to rear length must be a positive finite value.");
+  }
   return {
     id: project.id,
     name: project.name,
@@ -175,6 +189,6 @@ export function validateProject(value: unknown): SuspensionProject {
       tireAspectRatio,
     },
     suspension: { springRateNPerMm },
-    rearSuspension: { mainArmInnerMountWidthMm },
+    rearSuspension: { mainArmInnerMountWidthMm, mainArmInnerMountHeightMm, frontToRearLengthMm },
   };
 }

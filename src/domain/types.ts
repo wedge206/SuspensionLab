@@ -54,5 +54,7 @@ export interface SuspensionProject {
   };
   rearSuspension: {
     mainArmInnerMountWidthMm: number;
+    mainArmInnerMountHeightMm: number;
+    frontToRearLengthMm: number;
   };
 }

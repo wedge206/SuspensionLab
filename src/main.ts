@@ -245,6 +245,14 @@ app.innerHTML = `
                 <span><strong>Main arm inner mount width</strong><small>Distance between left and right inner mounts</small></span>
                 <span class="dimension-input"><input id="rear-main-arm-inner-mount-width" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
+              <label class="dimension-field" for="rear-main-arm-inner-mount-height">
+                <span><strong>Main arm inner mount height</strong><small>Height above the ground plane</small></span>
+                <span class="dimension-input"><input id="rear-main-arm-inner-mount-height" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-front-to-rear-length">
+                <span><strong>Front to Rear length</strong><small>Rearward from front control arm front mounts</small></span>
+                <span class="dimension-input"><input id="rear-front-to-rear-length" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
             </section>
           </div>
         </div>
@@ -355,6 +363,10 @@ const tireAspectRatioInput = document.querySelector<HTMLInputElement>("#tire-asp
 const springRateInput = document.querySelector<HTMLInputElement>("#spring-rate")!;
 const rearMainArmInnerMountWidthInput =
   document.querySelector<HTMLInputElement>("#rear-main-arm-inner-mount-width")!;
+const rearMainArmInnerMountHeightInput =
+  document.querySelector<HTMLInputElement>("#rear-main-arm-inner-mount-height")!;
+const rearFrontToRearLengthInput =
+  document.querySelector<HTMLInputElement>("#rear-front-to-rear-length")!;
 const scrubGeometryToggle = document.querySelector<HTMLInputElement>("#show-scrub-geometry")!;
 let scrubGeometryVisible = scrubGeometryToggle.checked;
 let viewer: ChassisScene | undefined;
@@ -434,6 +446,9 @@ function renderGeometry(): void {
   springRateInput.value = String(current.suspension.springRateNPerMm);
   rearMainArmInnerMountWidthInput.value =
     String(current.rearSuspension.mainArmInnerMountWidthMm);
+  rearMainArmInnerMountHeightInput.value =
+    String(current.rearSuspension.mainArmInnerMountHeightMm);
+  rearFrontToRearLengthInput.value = String(current.rearSuspension.frontToRearLengthMm);
   document.querySelector("#front-point-spacing")!.textContent =
     `${(current.frontLowerControlArmPickup.widthMm * 2).toFixed(0)} mm`;
   viewer?.update(current);
@@ -566,16 +581,25 @@ wheelDiameterInput.addEventListener("change", () => updateWheelTireDimension("wh
 tireSectionWidthInput.addEventListener("change", () => updateWheelTireDimension("tireSectionWidthMm", tireSectionWidthInput));
 tireAspectRatioInput.addEventListener("change", () => updateWheelTireDimension("tireAspectRatio", tireAspectRatioInput));
 springRateInput.addEventListener("change", () => updateSpringRate());
-rearMainArmInnerMountWidthInput.addEventListener("change", () => updateRearMainArmInnerMountWidth());
+rearMainArmInnerMountWidthInput.addEventListener("change", () =>
+  updateRearSuspensionDimension("mainArmInnerMountWidthMm", rearMainArmInnerMountWidthInput, "Main arm inner mount width"));
+rearMainArmInnerMountHeightInput.addEventListener("change", () =>
+  updateRearSuspensionDimension("mainArmInnerMountHeightMm", rearMainArmInnerMountHeightInput, "Main arm inner mount height"));
+rearFrontToRearLengthInput.addEventListener("change", () =>
+  updateRearSuspensionDimension("frontToRearLengthMm", rearFrontToRearLengthInput, "Front to rear length"));
 
-function updateRearMainArmInnerMountWidth(): void {
-  const value = Number(rearMainArmInnerMountWidthInput.value);
+function updateRearSuspensionDimension(
+  key: keyof SuspensionProject["rearSuspension"],
+  input: HTMLInputElement,
+  label: string,
+): void {
+  const value = Number(input.value);
   if (!Number.isFinite(value) || value <= 0) {
-    showNotice("Main arm inner mount width must be a positive finite number.", "error");
+    showNotice(`${label} must be a positive finite number.`, "error");
     renderGeometry();
     return;
   }
-  current.rearSuspension.mainArmInnerMountWidthMm = value;
+  current.rearSuspension[key] = value;
   renderGeometry();
   persistOrNotify();
 }

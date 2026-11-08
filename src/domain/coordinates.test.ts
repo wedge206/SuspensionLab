@@ -564,6 +564,7 @@ describe("front lower control arm pickup points", () => {
       rearSuspension: {
         mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
         toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+        mainArmLengthMm: 420, toeArmLengthMm: 225,
       },
     };
 

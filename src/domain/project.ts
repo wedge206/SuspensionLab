@@ -89,6 +89,12 @@ export function validateProject(value: unknown): SuspensionProject {
   const toeArmMainArmWidthMm: unknown = rearSuspension.toeArmMainArmWidthMm === undefined
     ? 190
     : rearSuspension.toeArmMainArmWidthMm;
+  const mainArmLengthMm: unknown = rearSuspension.mainArmLengthMm === undefined
+    ? 420
+    : rearSuspension.mainArmLengthMm;
+  const toeArmLengthMm: unknown = rearSuspension.toeArmLengthMm === undefined
+    ? 225
+    : rearSuspension.toeArmLengthMm;
   if (typeof widthMm !== "number" || !Number.isFinite(widthMm) || widthMm <= 0 ||
       typeof rearWidthMm !== "number" || !Number.isFinite(rearWidthMm) || rearWidthMm <= 0 ||
       typeof controlArmDepthMm !== "number" || !Number.isFinite(controlArmDepthMm) || controlArmDepthMm <= 0 ||
@@ -166,6 +172,14 @@ export function validateProject(value: unknown): SuspensionProject {
       !Number.isFinite(toeArmMainArmWidthMm) || toeArmMainArmWidthMm <= 0) {
     throw new Error("Toe arm Main arm width must be a positive finite value.");
   }
+  if (typeof mainArmLengthMm !== "number" ||
+      !Number.isFinite(mainArmLengthMm) || mainArmLengthMm <= 0) {
+    throw new Error("Rear main arm length must be a positive finite value.");
+  }
+  if (typeof toeArmLengthMm !== "number" ||
+      !Number.isFinite(toeArmLengthMm) || toeArmLengthMm <= 0) {
+    throw new Error("Rear toe arm length must be a positive finite value.");
+  }
   return {
     id: project.id,
     name: project.name,
@@ -217,6 +231,8 @@ export function validateProject(value: unknown): SuspensionProject {
       toeArmInnerMountWidthMm,
       toeArmInnerMountHeightMm,
       toeArmMainArmWidthMm,
+      mainArmLengthMm,
+      toeArmLengthMm,
     },
   };
 }

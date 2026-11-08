@@ -19,6 +19,8 @@ describe("rear suspension main arm inner mount height", () => {
       toeArmInnerMountWidthMm: 850,
       toeArmInnerMountHeightMm: 250,
       toeArmMainArmWidthMm: 190,
+      mainArmLengthMm: 420,
+      toeArmLengthMm: 225,
     });
 
   });
@@ -71,6 +73,8 @@ describe("rear suspension toe arm dimensions", () => {
     { key: "toeArmInnerMountWidthMm", label: "Toe arm inner mount width", defaultValue: 850 },
     { key: "toeArmInnerMountHeightMm", label: "Toe arm inner mount height", defaultValue: 250 },
     { key: "toeArmMainArmWidthMm", label: "Toe arm Main arm width", defaultValue: 190 },
+    { key: "mainArmLengthMm", label: "Rear main arm length", defaultValue: 420 },
+    { key: "toeArmLengthMm", label: "Rear toe arm length", defaultValue: 225 },
   ] as const;
 
   it.each(dimensions)("defaults an absent $key without changing the other dimensions", ({ key, defaultValue }) => {

@@ -265,6 +265,14 @@ app.innerHTML = `
                 <span><strong>Toe arm Main arm width</strong><small>Forward from rear main arm inner mounts</small></span>
                 <span class="dimension-input"><input id="rear-toe-arm-main-arm-width" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
+              <label class="dimension-field" for="rear-main-arm-length">
+                <span><strong>Rear Main Arm Length</strong><small>Outward from main arm inner mounts</small></span>
+                <span class="dimension-input"><input id="rear-main-arm-length" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-toe-arm-length">
+                <span><strong>Rear Toe Arm Length</strong><small>Outward from toe arm inner mounts</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-length" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
             </section>
           </div>
         </div>
@@ -385,6 +393,10 @@ const rearToeArmInnerMountHeightInput =
   document.querySelector<HTMLInputElement>("#rear-toe-arm-inner-mount-height")!;
 const rearToeArmMainArmWidthInput =
   document.querySelector<HTMLInputElement>("#rear-toe-arm-main-arm-width")!;
+const rearMainArmLengthInput =
+  document.querySelector<HTMLInputElement>("#rear-main-arm-length")!;
+const rearToeArmLengthInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-length")!;
 const scrubGeometryToggle = document.querySelector<HTMLInputElement>("#show-scrub-geometry")!;
 let scrubGeometryVisible = scrubGeometryToggle.checked;
 let viewer: ChassisScene | undefined;
@@ -470,6 +482,8 @@ function renderGeometry(): void {
   rearToeArmInnerMountWidthInput.value = String(current.rearSuspension.toeArmInnerMountWidthMm);
   rearToeArmInnerMountHeightInput.value = String(current.rearSuspension.toeArmInnerMountHeightMm);
   rearToeArmMainArmWidthInput.value = String(current.rearSuspension.toeArmMainArmWidthMm);
+  rearMainArmLengthInput.value = String(current.rearSuspension.mainArmLengthMm);
+  rearToeArmLengthInput.value = String(current.rearSuspension.toeArmLengthMm);
   document.querySelector("#front-point-spacing")!.textContent =
     `${(current.frontLowerControlArmPickup.widthMm * 2).toFixed(0)} mm`;
   viewer?.update(current);
@@ -614,6 +628,10 @@ rearToeArmInnerMountHeightInput.addEventListener("change", () =>
   updateRearSuspensionDimension("toeArmInnerMountHeightMm", rearToeArmInnerMountHeightInput, "Toe arm inner mount height"));
 rearToeArmMainArmWidthInput.addEventListener("change", () =>
   updateRearSuspensionDimension("toeArmMainArmWidthMm", rearToeArmMainArmWidthInput, "Toe arm Main arm width"));
+rearMainArmLengthInput.addEventListener("change", () =>
+  updateRearSuspensionDimension("mainArmLengthMm", rearMainArmLengthInput, "Rear Main Arm Length"));
+rearToeArmLengthInput.addEventListener("change", () =>
+  updateRearSuspensionDimension("toeArmLengthMm", rearToeArmLengthInput, "Rear Toe Arm Length"));
 
 function updateRearSuspensionDimension(
   key: keyof SuspensionProject["rearSuspension"],

@@ -56,8 +56,9 @@ describe("built-in project templates", () => {
       },
       suspension: { springRateNPerMm: 50 },
       rearSuspension: {
-        mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
-        toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+        mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
+        toeArmInnerMountWidthMm: 1000, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
+        mainArmLengthMm: 420, toeArmLengthMm: 225,
       },
     });
   });
@@ -77,8 +78,9 @@ describe("built-in project templates", () => {
       name: "Renamed",
       frontLowerControlArmPickup: { widthMm: 465 },
       rearSuspension: {
-        mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
-        toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+        mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1900,
+        toeArmInnerMountWidthMm: 1000, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
+        mainArmLengthMm: 420, toeArmLengthMm: 225,
       },
     });
   });

@@ -59,5 +59,7 @@ export interface SuspensionProject {
     toeArmInnerMountWidthMm: number;
     toeArmInnerMountHeightMm: number;
     toeArmMainArmWidthMm: number;
+    mainArmLengthMm: number;
+    toeArmLengthMm: number;
   };
 }

@@ -75,6 +75,14 @@ export class ChassisScene {
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
   ];
+  private readonly rearMainArms = new THREE.LineSegments(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x80b69d }),
+  );
+  private readonly rearToeArms = new THREE.LineSegments(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0xe7d36b }),
+  );
   private readonly ballJoints = [
     new THREE.Mesh(new THREE.SphereGeometry(28, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe77858, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(28, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe77858, roughness: 0.4 })),
@@ -292,6 +300,8 @@ export class ChassisScene {
       ...this.pickups,
       ...this.rearMainArmInnerMounts,
       ...this.rearToeArmInnerMounts,
+      this.rearMainArms,
+      this.rearToeArms,
       ...this.ballJoints,
       ...this.steeringRackPivots,
       ...this.topMountPoints,
@@ -360,6 +370,18 @@ export class ChassisScene {
       project.rearSuspension.toeArmMainArmWidthMm,
     );
     this.rearToeArmInnerMounts.forEach((mount, index) => mount.position.set(...toeArmMounts[index]));
+    const outwardEndpoint = (point: Vec3, lengthMm: number): THREE.Vector3 =>
+      new THREE.Vector3(point[0], point[1] + Math.sign(point[1]) * lengthMm, point[2]);
+    this.rearMainArms.geometry.setFromPoints(rearMounts.flatMap((mount) => [
+      new THREE.Vector3(...mount),
+      outwardEndpoint(mount, project.rearSuspension.mainArmLengthMm),
+    ]));
+    this.rearMainArms.geometry.computeBoundingSphere();
+    this.rearToeArms.geometry.setFromPoints(toeArmMounts.flatMap((mount) => [
+      new THREE.Vector3(...mount),
+      outwardEndpoint(mount, project.rearSuspension.toeArmLengthMm),
+    ]));
+    this.rearToeArms.geometry.computeBoundingSphere();
     points.ballJoint.forEach((point, index) => this.ballJoints[index].position.set(...point));
     const rackPivots = steeringRackPivotPoints(
       project.steeringRack.widthMm,
@@ -756,6 +778,10 @@ export class ChassisScene {
     }
     this.controlArmFirstSides.geometry.dispose();
     this.controlArmFirstSides.material.dispose();
+    this.rearMainArms.geometry.dispose();
+    this.rearMainArms.material.dispose();
+    this.rearToeArms.geometry.dispose();
+    this.rearToeArms.material.dispose();
     this.steeringRack.geometry.dispose();
     this.steeringRack.material.dispose();
     this.steeringRackExtensions.geometry.dispose();

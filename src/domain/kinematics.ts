@@ -6,13 +6,8 @@ import {
   tieRodConstrainedKnucklePoints, tireOverallDiameterMm, tireTreadCenter, trueHubFaceGeometry,
   wheelAlignmentMeasurements,
 } from "./coordinates";
+import { FRONT_GEOMETRY_ERROR_CODES, isGeometryError, REAR_GEOMETRY_ERROR_CODES } from "./geometryError";
 import type { SuspensionProject, Vec3 } from "./types";
-
-export const REAR_GEOMETRY_ERROR = "Rear arm lengths cannot reach both outer mounts with the current geometry.";
-export const FRONT_GEOMETRY_ERRORS = [
-  "Tie Rod Length cannot be satisfied at the current ball joint position.",
-  "Strut angle cannot reach the fixed top mount.",
-] as const;
 
 export function calculateGroundStations(project: SuspensionProject) {
   const rear = rearMainArmInnerMountPoints(
@@ -67,7 +62,7 @@ export function solveSuspension(project: SuspensionProject) {
       hub.toeArmOuterMountLateralOffsetMm, hub.mainArmOuterMountStaticHeightMm,
     );
   } catch (error) {
-    if (!(error instanceof Error) || error.message !== REAR_GEOMETRY_ERROR) throw error;
+    if (!isGeometryError(error, REAR_GEOMETRY_ERROR_CODES)) throw error;
     rearGeometryMessage = error.message;
   }
   const rackPivots = steeringRackPivotPoints(
@@ -92,7 +87,7 @@ export function solveSuspension(project: SuspensionProject) {
       -knuckle.strutMountAngleDeg, rack.tieRodLengthMm, knuckle.strutMinLengthMm, knuckle.strutMaxLengthMm,
     );
   } catch (error) {
-    if (!(error instanceof Error) || !(FRONT_GEOMETRY_ERRORS as readonly string[]).includes(error.message)) throw error;
+    if (!isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) throw error;
     geometryError = error.message;
     knucklePoints = {
       steeringPivots: neutralSteeringPivots,

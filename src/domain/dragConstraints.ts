@@ -3,7 +3,7 @@ import {
   rearToeArmInnerMountPoints, rearTrailingArmMountPoints, solveRearArmMounts, steeringRackPivotPoints,
   steeringRackTravelLimitMm, tieRodConstrainedKnucklePoints,
 } from "./coordinates";
-import { FRONT_GEOMETRY_ERRORS, REAR_GEOMETRY_ERROR } from "./kinematics";
+import { FRONT_GEOMETRY_ERROR_CODES, isGeometryError, REAR_GEOMETRY_ERROR_CODES } from "./geometryError";
 import type { SuspensionProject } from "./types";
 
 export const MAX_CONTROL_ARM_DRAG_ANGLE_RAD = Math.PI / 2;
@@ -36,7 +36,7 @@ export function frontConstraintViolation(project: SuspensionProject, index: 0 | 
       Math.max(0, length - knuckle.strutMaxLengthMm), 0);
     return [rotationViolation, travelViolation];
   } catch (error) {
-    if (error instanceof Error && (FRONT_GEOMETRY_ERRORS as readonly string[]).includes(error.message)) {
+    if (isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) {
       return [rotationViolation, Number.POSITIVE_INFINITY];
     }
     throw error;
@@ -82,7 +82,7 @@ export function rearHeightReachable(project: SuspensionProject, index: 0 | 1, of
     );
     return true;
   } catch (error) {
-    if (error instanceof Error && error.message === REAR_GEOMETRY_ERROR) return false;
+    if (isGeometryError(error, REAR_GEOMETRY_ERROR_CODES)) return false;
     throw error;
   }
 }

@@ -1,4 +1,5 @@
 import type { SuspensionProject, Vec3 } from "./types";
+import { FRONT_GEOMETRY_ERROR_CODES, GeometryError, isGeometryError } from "./geometryError";
 
 export const FRONT_PICKUP_STATION_MM = 650;
 
@@ -152,7 +153,7 @@ export function solveRearArmMounts(
     const toeHeight = nominal[2] + heightOffsetMm;
     const toeHorizontalSquared = toeLengthMm ** 2 - (toeHeight - toe[2]) ** 2;
     if (lateralSquared < -1e-8 || toeHorizontalSquared < -1e-8) {
-      throw new Error("Rear arm lengths cannot reach both outer mounts with the current geometry.");
+      throw new GeometryError("rearArmsUnreachable");
     }
     const mainOuter: Vec3 = [
       nominal[0], main[1] + (side === 0 ? 1 : -1) * Math.sqrt(Math.max(0, lateralSquared)), nominal[2],
@@ -164,7 +165,7 @@ export function solveRearArmMounts(
     const toeRadius = Math.sqrt(Math.max(0, toeHorizontalSquared));
     if (distance < 1e-9 || distance > hubRadius + toeRadius + 1e-9 ||
         distance < Math.abs(hubRadius - toeRadius) - 1e-9) {
-      throw new Error("Rear arm lengths cannot reach both outer mounts with the current geometry.");
+      throw new GeometryError("rearArmsUnreachable");
     }
     const along = (hubRadius ** 2 - toeRadius ** 2 + distance ** 2) / (2 * distance);
     const across = Math.sqrt(Math.max(0, hubRadius ** 2 - along ** 2));
@@ -329,7 +330,7 @@ export function tieRodConstrainedKnucklePoints(
     ];
     const topMountDistance = Math.hypot(...targetVector);
     if (topMountDistance < 1e-9) {
-      throw new Error("Tie Rod Length cannot be satisfied at the current ball joint position.");
+      throw new GeometryError("tieRodUnsatisfiable");
     }
     const topDirection = normalize(targetVector);
     const neutralStrutMount = neutralStrutMounts[index];
@@ -348,13 +349,13 @@ export function tieRodConstrainedKnucklePoints(
     const discriminant = mountProjection ** 2 + topMountDistance ** 2 -
       mountOffset[0] ** 2 - mountOffset[1] ** 2 - mountOffset[2] ** 2;
     if (discriminant < -1e-7) {
-      throw new Error("Strut angle cannot reach the fixed top mount.");
+      throw new GeometryError("strutCannotReachTopMount");
     }
     const root = Math.sqrt(Math.max(0, discriminant));
     const candidates = [-mountProjection + root, -mountProjection - root]
       .filter((length) => length > 0);
     if (!candidates.length) {
-      throw new Error("Strut angle cannot reach the fixed top mount.");
+      throw new GeometryError("strutCannotReachTopMount");
     }
     const distanceToTravel = (length: number): number =>
       Math.max(strutMinLengthMm - length, 0, length - strutMaxLengthMm);
@@ -435,7 +436,7 @@ export function tieRodConstrainedKnucklePoints(
       rackRadial[2] * cross[2];
     const amplitude = Math.hypot(cosineCoefficient, sineCoefficient);
     if (Math.abs(constant) > amplitude + 1e-7) {
-      throw new Error("Tie Rod Length cannot be satisfied at the current ball joint position.");
+      throw new GeometryError("tieRodUnsatisfiable");
     }
 
     let rollAngleRad = 0;
@@ -544,10 +545,7 @@ export function withStaticStrutLength(project: SuspensionProject): SuspensionPro
           return { ...project, frontControlArm: { ...arm, leftRotationRad: left, rightRotationRad: right } };
         }
       } catch (error) {
-        if (!(error instanceof Error) || ![
-          "Tie Rod Length cannot be satisfied at the current ball joint position.",
-          "Strut angle cannot reach the fixed top mount.",
-        ].includes(error.message)) throw error;
+        if (!isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) throw error;
       }
     }
   }
@@ -820,10 +818,6 @@ export function suspensionMotionRatios(
     const tireCenter = tireTreadCenter(trueFace.center, trueFace.normal, wheelTire.wheelOffsetMm);
     return { strutLength: knuckle.strutLengths[side], wheelCenterHeight: tireCenter[2] };
   };
-  const knownConstraintErrors = [
-    "Tie Rod Length cannot be satisfied at the current ball joint position.",
-    "Strut angle cannot reach the fixed top mount.",
-  ];
   return [0, 1].map((sideIndex) => {
     const side = sideIndex as 0 | 1;
     try {
@@ -835,7 +829,7 @@ export function suspensionMotionRatios(
       const ratio = Math.abs(upper.strutLength - lower.strutLength) / wheelTravel;
       return Number.isFinite(ratio) ? ratio : null;
     } catch (error) {
-      if (error instanceof Error && knownConstraintErrors.includes(error.message)) return null;
+      if (isGeometryError(error, FRONT_GEOMETRY_ERROR_CODES)) return null;
       throw error;
     }
   }) as [number | null, number | null];

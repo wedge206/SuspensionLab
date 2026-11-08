@@ -18,10 +18,6 @@ import {
   trueHubFaceGeometry,
   wheelAlignmentMeasurements,
 } from "../domain/coordinates";
-import {
-  DEFAULT_CONTROL_ARM_DEPTH_MM,
-  DEFAULT_FRONT_PICKUP_HEIGHT_MM,
-} from "../domain/project";
 import type { SuspensionProject, Vec3 } from "../domain/types";
 import type { WheelAlignmentMeasurements } from "../domain/coordinates";
 
@@ -221,6 +217,7 @@ export class ChassisScene {
     private readonly onProjectChange: () => void,
     private readonly onGeometryError: (message: string, type?: "error" | "success") => void,
     private readonly onAlignmentUpdate: (measurements: WheelAlignmentMeasurements | null) => void,
+    initialProject: SuspensionProject,
   ) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -258,7 +255,10 @@ export class ChassisScene {
     this.scene.add(key);
 
     this.scene.add(this.createGroundGrid());
-    this.frame = this.createFrame(DEFAULT_CONTROL_ARM_DEPTH_MM, DEFAULT_FRONT_PICKUP_HEIGHT_MM);
+    this.frame = this.createFrame(
+      initialProject.frontLowerControlArmPickup.controlArmDepthMm,
+      initialProject.frontLowerControlArmPickup.frontHeightMm,
+    );
     this.scene.add(this.frame);
     this.scene.add(
       this.controlArmFirstSides,

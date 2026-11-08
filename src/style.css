@@ -31,6 +31,13 @@ button { cursor: pointer; }
 .button-primary:hover { background: #568a75; }
 select { background: #13191b; border: 1px solid #344043; border-radius: 5px; color: #e0e8e4; }
 .project-controls select { height: 35px; padding: 0 28px 0 10px; font-size: 12px; }
+.template-dialog { width: min(380px, calc(100vw - 32px)); padding: 22px; border: 1px solid #394845; border-radius: 9px; background: #181f22; color: #e7ece9; }
+.template-dialog::backdrop { background: rgba(5, 9, 10, .72); }
+.template-dialog form { display: grid; gap: 14px; }
+.template-dialog h2 { margin: 0; }
+.template-dialog label { color: #b7c3be; font-size: 12px; }
+.template-dialog select { width: 100%; height: 36px; padding: 0 10px; }
+.template-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; }
 .workspace { display: grid; grid-template-columns: 380px minmax(0, 1fr); min-height: calc(100vh - 68px); }
 .sidebar { padding: 24px 22px 18px; border-right: 1px solid #293235; background: #151b1e; overflow-y: auto; max-height: calc(100vh - 68px); }
 .section-heading, .geometry-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

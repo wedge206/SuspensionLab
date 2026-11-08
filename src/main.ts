@@ -1,43 +1,12 @@
 import type { SuspensionProject } from "./domain/types";
 import type { WheelAlignmentMeasurements } from "./domain/coordinates";
-import {
-  DEFAULT_FRONT_PICKUP_HEIGHT_MM,
-  DEFAULT_REAR_PICKUP_HEIGHT_MM,
-  DEFAULT_PICKUP_WIDTH_MM,
-  DEFAULT_REAR_PICKUP_WIDTH_MM,
-  DEFAULT_CONTROL_ARM_DEPTH_MM,
-  DEFAULT_CONTROL_ARM_LENGTH_MM,
-  DEFAULT_BALL_JOINT_OFFSET_MM,
-  DEFAULT_CONTROL_ARM_ROTATION_RAD,
-  DEFAULT_STEERING_RACK_WIDTH_MM,
-  DEFAULT_STEERING_RACK_HEIGHT_MM,
-  DEFAULT_STEERING_RACK_OFFSET_MM,
-  DEFAULT_STEERING_HOUSING_WIDTH_MM,
-  DEFAULT_STEERING_LIMITER_MM,
-  DEFAULT_STEERING_RACK_TRAVEL_MM,
-  DEFAULT_TIE_ROD_LENGTH_MM,
-  DEFAULT_TOP_MOUNT_HEIGHT_MM,
-  DEFAULT_TOP_MOUNT_WIDTH_MM,
-  DEFAULT_TOP_MOUNT_OFFSET_MM,
-  DEFAULT_STEERING_PIVOT_HEIGHT_MM,
-  DEFAULT_STEERING_PIVOT_DEPTH_MM,
-  DEFAULT_STEERING_PIVOT_OFFSET_MM,
-  DEFAULT_STRUT_MOUNT_HEIGHT_MM,
-  DEFAULT_STRUT_MOUNT_OFFSET_MM,
-  DEFAULT_STRUT_MOUNT_LOCATION_MM,
-  DEFAULT_STRUT_MOUNT_ANGLE_DEG,
-  DEFAULT_STRUT_MAX_LENGTH_MM,
-  DEFAULT_STRUT_MIN_LENGTH_MM,
-  DEFAULT_HUB_HEIGHT_MM,
-  DEFAULT_HUB_SPACING_MM,
-  DEFAULT_WHEEL_OFFSET_MM,
-  DEFAULT_WHEEL_DIAMETER_IN,
-  DEFAULT_TIRE_SECTION_WIDTH_MM,
-  DEFAULT_TIRE_ASPECT_RATIO,
-  DEFAULT_SPRING_RATE_N_PER_MM,
-  DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM,
-} from "./domain/project";
 import { downloadProject, loadProjects, readProjectFile, saveProjects } from "./persistence/projects";
+import {
+  createProjectFromTemplate,
+  DEFAULT_TEMPLATE_KEY,
+  listProjectTemplates,
+  resetProjectToTemplate,
+} from "./templates/templates";
 import { steeringRackTravelLimitMm } from "./domain/coordinates";
 import type { ChassisScene } from "./viewer/scene";
 import "./style.css";
@@ -46,22 +15,32 @@ const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Application root was not found.");
 
 let projects: SuspensionProject[] = [];
+let projectTemplateKeys: Record<string, string> = {};
 let current: SuspensionProject;
 let initialNotice = "";
 
 try {
   const loaded = loadProjects();
   projects = loaded.projects;
+  projectTemplateKeys = loaded.templateKeys;
+  const knownTemplateKeys = new Set(listProjectTemplates().map((template) => template.key));
+  for (const project of projects) {
+    if (!knownTemplateKeys.has(projectTemplateKeys[project.id])) {
+      projectTemplateKeys[project.id] = DEFAULT_TEMPLATE_KEY;
+    }
+  }
   if (!projects.length) {
-    current = createProject("New suspension project");
+    current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY);
     projects = [current];
-    saveProjects(projects);
+    projectTemplateKeys[current.id] = DEFAULT_TEMPLATE_KEY;
+    saveProjects(projects, projectTemplateKeys);
   } else {
     current = projects[0];
   }
 } catch (error) {
-  current = createProject("New suspension project");
+  current = createProjectFromTemplate(DEFAULT_TEMPLATE_KEY);
   projects = [current];
+  projectTemplateKeys[current.id] = DEFAULT_TEMPLATE_KEY;
   initialNotice = error instanceof Error ? error.message : "Could not load saved projects.";
 }
 
@@ -77,12 +56,23 @@ app.innerHTML = `
       <button class="button button-quiet" id="delete-project">Delete</button>
     </div>
     <div class="topbar-actions">
-      <button class="button button-quiet" id="reset-project" title="Reset this project's dimensions to their defaults">Reset</button>
+      <button class="button button-quiet" id="reset-project" title="Reset this project to its original template">Reset</button>
       <button class="button button-quiet" id="import-project">Import JSON</button>
       <button class="button button-primary" id="export-project">Export JSON</button>
       <input id="import-file" class="sr-only" type="file" accept="application/json,.json" />
     </div>
   </header>
+  <dialog id="template-dialog" class="template-dialog" aria-labelledby="template-heading">
+    <form id="template-form">
+      <h2 id="template-heading">New project</h2>
+      <label for="template-select">Choose a template</label>
+      <select id="template-select"></select>
+      <div class="template-dialog-actions">
+        <button class="button button-quiet" id="cancel-template" type="button">Cancel</button>
+        <button class="button button-primary" type="submit">Create project</button>
+      </div>
+    </form>
+  </dialog>
   <main class="workspace">
     <aside class="sidebar">
       <div class="section-heading">
@@ -308,6 +298,15 @@ app.innerHTML = `
 
 const projectSelect = document.querySelector<HTMLSelectElement>("#project-select")!;
 const notice = document.querySelector<HTMLDivElement>("#notice")!;
+const templateDialog = document.querySelector<HTMLDialogElement>("#template-dialog")!;
+const templateSelect = document.querySelector<HTMLSelectElement>("#template-select")!;
+for (const template of listProjectTemplates()) {
+  const option = document.createElement("option");
+  option.value = template.key;
+  option.textContent = template.name;
+  templateSelect.append(option);
+}
+templateSelect.value = DEFAULT_TEMPLATE_KEY;
 const toeTotalOutput = document.querySelector<HTMLElement>("#toe-total")!;
 const toeSidesOutput = document.querySelector<HTMLElement>("#toe-sides")!;
 const camberOutput = document.querySelector<HTMLElement>("#camber-values")!;
@@ -353,63 +352,6 @@ const scrubGeometryToggle = document.querySelector<HTMLInputElement>("#show-scru
 let scrubGeometryVisible = scrubGeometryToggle.checked;
 let viewer: ChassisScene | undefined;
 
-function createProject(name: string): SuspensionProject {
-  return {
-    id: crypto.randomUUID(),
-    name,
-    frontLowerControlArmPickup: {
-      widthMm: DEFAULT_PICKUP_WIDTH_MM,
-      rearWidthMm: DEFAULT_REAR_PICKUP_WIDTH_MM,
-      controlArmDepthMm: DEFAULT_CONTROL_ARM_DEPTH_MM,
-      frontHeightMm: DEFAULT_FRONT_PICKUP_HEIGHT_MM,
-      rearHeightMm: DEFAULT_REAR_PICKUP_HEIGHT_MM,
-    },
-    frontControlArm: {
-      lengthMm: DEFAULT_CONTROL_ARM_LENGTH_MM,
-      ballJointOffsetMm: DEFAULT_BALL_JOINT_OFFSET_MM,
-      leftRotationRad: DEFAULT_CONTROL_ARM_ROTATION_RAD,
-      rightRotationRad: DEFAULT_CONTROL_ARM_ROTATION_RAD,
-    },
-    steeringRack: {
-      widthMm: DEFAULT_STEERING_RACK_WIDTH_MM,
-      centerlineHeightMm: DEFAULT_STEERING_RACK_HEIGHT_MM,
-      centerlineOffsetMm: DEFAULT_STEERING_RACK_OFFSET_MM,
-      housingWidthMm: DEFAULT_STEERING_HOUSING_WIDTH_MM,
-      steeringLimiterMm: DEFAULT_STEERING_LIMITER_MM,
-      rackTravelMm: DEFAULT_STEERING_RACK_TRAVEL_MM,
-      tieRodLengthMm: DEFAULT_TIE_ROD_LENGTH_MM,
-    },
-    frontTopMount: {
-      heightMm: DEFAULT_TOP_MOUNT_HEIGHT_MM,
-      widthMm: DEFAULT_TOP_MOUNT_WIDTH_MM,
-      offsetMm: DEFAULT_TOP_MOUNT_OFFSET_MM,
-    },
-    wheelKnuckle: {
-      steeringPivotHeightMm: DEFAULT_STEERING_PIVOT_HEIGHT_MM,
-      steeringPivotDepthMm: DEFAULT_STEERING_PIVOT_DEPTH_MM,
-      steeringPivotOffsetMm: DEFAULT_STEERING_PIVOT_OFFSET_MM,
-      strutMountHeightMm: DEFAULT_STRUT_MOUNT_HEIGHT_MM,
-      strutMountOffsetMm: DEFAULT_STRUT_MOUNT_OFFSET_MM,
-      strutMountLocationMm: DEFAULT_STRUT_MOUNT_LOCATION_MM,
-      strutMountAngleDeg: DEFAULT_STRUT_MOUNT_ANGLE_DEG,
-      strutMaxLengthMm: DEFAULT_STRUT_MAX_LENGTH_MM,
-      strutMinLengthMm: DEFAULT_STRUT_MIN_LENGTH_MM,
-      hubHeightMm: DEFAULT_HUB_HEIGHT_MM,
-      hubSpacingMm: DEFAULT_HUB_SPACING_MM,
-    },
-    wheelTire: {
-      wheelOffsetMm: DEFAULT_WHEEL_OFFSET_MM,
-      wheelDiameterIn: DEFAULT_WHEEL_DIAMETER_IN,
-      tireSectionWidthMm: DEFAULT_TIRE_SECTION_WIDTH_MM,
-      tireAspectRatio: DEFAULT_TIRE_ASPECT_RATIO,
-    },
-    suspension: { springRateNPerMm: DEFAULT_SPRING_RATE_N_PER_MM },
-    rearSuspension: {
-      mainArmInnerMountWidthMm: DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM,
-    },
-  };
-}
-
 function showNotice(message: string, type: "error" | "success" = "success"): void {
   notice.textContent = message;
   notice.dataset.type = type;
@@ -429,7 +371,7 @@ function renderProjectSelect(): void {
 
 function persist(): void {
   projects = projects.map((project) => project.id === current.id ? current : project);
-  saveProjects(projects);
+  saveProjects(projects, projectTemplateKeys);
 }
 
 function persistOrNotify(): boolean {
@@ -526,6 +468,7 @@ void import("./viewer/scene").then(({ ChassisScene: Scene }) => {
     persistOrNotify,
     (message, type) => showNotice(message, type),
     renderAlignmentMeasurements,
+    current,
   );
   viewer.setScrubRadiusGeometryVisible(scrubGeometryVisible);
   scrubGeometryToggle.addEventListener("change", () => {
@@ -576,58 +519,12 @@ function renderAlignmentMeasurements(measurements: WheelAlignmentMeasurements | 
 projectSelect.addEventListener("change", () => selectProject(projectSelect.value));
 
 document.querySelector<HTMLButtonElement>("#reset-project")!.addEventListener("click", () => {
-  current.frontLowerControlArmPickup = {
-    widthMm: DEFAULT_PICKUP_WIDTH_MM,
-    rearWidthMm: DEFAULT_REAR_PICKUP_WIDTH_MM,
-    controlArmDepthMm: DEFAULT_CONTROL_ARM_DEPTH_MM,
-    frontHeightMm: DEFAULT_FRONT_PICKUP_HEIGHT_MM,
-    rearHeightMm: DEFAULT_REAR_PICKUP_HEIGHT_MM,
-  };
-  current.frontControlArm = {
-    lengthMm: DEFAULT_CONTROL_ARM_LENGTH_MM,
-    ballJointOffsetMm: DEFAULT_BALL_JOINT_OFFSET_MM,
-    leftRotationRad: DEFAULT_CONTROL_ARM_ROTATION_RAD,
-    rightRotationRad: DEFAULT_CONTROL_ARM_ROTATION_RAD,
-  };
-  current.steeringRack = {
-    widthMm: DEFAULT_STEERING_RACK_WIDTH_MM,
-    centerlineHeightMm: DEFAULT_STEERING_RACK_HEIGHT_MM,
-    centerlineOffsetMm: DEFAULT_STEERING_RACK_OFFSET_MM,
-    housingWidthMm: DEFAULT_STEERING_HOUSING_WIDTH_MM,
-    steeringLimiterMm: DEFAULT_STEERING_LIMITER_MM,
-    rackTravelMm: DEFAULT_STEERING_RACK_TRAVEL_MM,
-    tieRodLengthMm: DEFAULT_TIE_ROD_LENGTH_MM,
-  };
-  current.frontTopMount = {
-    heightMm: DEFAULT_TOP_MOUNT_HEIGHT_MM,
-    widthMm: DEFAULT_TOP_MOUNT_WIDTH_MM,
-    offsetMm: DEFAULT_TOP_MOUNT_OFFSET_MM,
-  };
-  current.wheelKnuckle = {
-    steeringPivotHeightMm: DEFAULT_STEERING_PIVOT_HEIGHT_MM,
-    steeringPivotDepthMm: DEFAULT_STEERING_PIVOT_DEPTH_MM,
-    steeringPivotOffsetMm: DEFAULT_STEERING_PIVOT_OFFSET_MM,
-    strutMountHeightMm: DEFAULT_STRUT_MOUNT_HEIGHT_MM,
-    strutMountOffsetMm: DEFAULT_STRUT_MOUNT_OFFSET_MM,
-    strutMountLocationMm: DEFAULT_STRUT_MOUNT_LOCATION_MM,
-    strutMountAngleDeg: DEFAULT_STRUT_MOUNT_ANGLE_DEG,
-    strutMaxLengthMm: DEFAULT_STRUT_MAX_LENGTH_MM,
-    strutMinLengthMm: DEFAULT_STRUT_MIN_LENGTH_MM,
-    hubHeightMm: DEFAULT_HUB_HEIGHT_MM,
-    hubSpacingMm: DEFAULT_HUB_SPACING_MM,
-  };
-  current.wheelTire = {
-    wheelOffsetMm: DEFAULT_WHEEL_OFFSET_MM,
-    wheelDiameterIn: DEFAULT_WHEEL_DIAMETER_IN,
-    tireSectionWidthMm: DEFAULT_TIRE_SECTION_WIDTH_MM,
-    tireAspectRatio: DEFAULT_TIRE_ASPECT_RATIO,
-  };
-  current.suspension = { springRateNPerMm: DEFAULT_SPRING_RATE_N_PER_MM };
-  current.rearSuspension = {
-    mainArmInnerMountWidthMm: DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM,
-  };
+  current = resetProjectToTemplate(
+    current,
+    projectTemplateKeys[current.id] ?? DEFAULT_TEMPLATE_KEY,
+  );
   renderGeometry();
-  if (persistOrNotify()) showNotice("Project dimensions reset to their default values.");
+  if (persistOrNotify()) showNotice("Project dimensions reset to their template values.");
 });
 
 widthInput.addEventListener("change", () => updateDimension("widthMm", widthInput));
@@ -855,11 +752,28 @@ function updateWheelTireDimension(
 }
 
 document.querySelector<HTMLButtonElement>("#new-project")!.addEventListener("click", () => {
-  current = createProject("New suspension project");
-  projects.push(current);
-  renderProjectSelect();
-  renderGeometry();
-  persistOrNotify();
+  templateDialog.showModal();
+});
+
+document.querySelector<HTMLButtonElement>("#cancel-template")!.addEventListener("click", () => {
+  templateDialog.close();
+});
+
+document.querySelector<HTMLFormElement>("#template-form")!.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const templateKey = templateSelect.value;
+  try {
+    current = createProjectFromTemplate(templateKey);
+    projects.push(current);
+    projectTemplateKeys[current.id] = templateKey;
+    renderProjectSelect();
+    renderGeometry();
+    if (persistOrNotify()) showNotice(`Created project "${current.name}".`);
+  } catch (error) {
+    showNotice(error instanceof Error ? error.message : "Could not create a project from this template.", "error");
+  } finally {
+    templateDialog.close();
+  }
 });
 
 document.querySelector<HTMLButtonElement>("#rename-project")!.addEventListener("click", () => {
@@ -875,8 +789,10 @@ document.querySelector<HTMLButtonElement>("#rename-project")!.addEventListener("
 });
 
 document.querySelector<HTMLButtonElement>("#duplicate-project")!.addEventListener("click", () => {
+  const templateKey = projectTemplateKeys[current.id] ?? DEFAULT_TEMPLATE_KEY;
   current = { ...structuredClone(current), id: crypto.randomUUID(), name: `${current.name} copy` };
   projects.push(current);
+  projectTemplateKeys[current.id] = templateKey;
   renderProjectSelect();
   renderGeometry();
   persistOrNotify();
@@ -889,11 +805,12 @@ document.querySelector<HTMLButtonElement>("#delete-project")!.addEventListener("
   }
   if (!window.confirm(`Delete "${current.name}" from this browser?`)) return;
   projects = projects.filter((project) => project.id !== current.id);
+  delete projectTemplateKeys[current.id];
   current = projects[0];
   renderProjectSelect();
   renderGeometry();
   try {
-    saveProjects(projects);
+    saveProjects(projects, projectTemplateKeys);
   } catch (error) {
     showNotice(error instanceof Error ? error.message : "Could not save the project library.", "error");
   }
@@ -910,6 +827,7 @@ document.querySelector<HTMLInputElement>("#import-file")!.addEventListener("chan
     current = await readProjectFile(file);
     current.id = crypto.randomUUID();
     projects.push(current);
+    projectTemplateKeys[current.id] = DEFAULT_TEMPLATE_KEY;
     renderProjectSelect();
     renderGeometry();
     if (persistOrNotify()) showNotice(`Imported project "${current.name}".`);

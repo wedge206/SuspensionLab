@@ -1,42 +1,6 @@
 import type { SuspensionProject } from "./types";
 import { steeringRackTravelLimitMm } from "./coordinates";
 
-export const DEFAULT_PICKUP_WIDTH_MM = 465;
-export const DEFAULT_REAR_PICKUP_WIDTH_MM = 465;
-export const DEFAULT_CONTROL_ARM_DEPTH_MM = 302;
-export const DEFAULT_FRONT_PICKUP_HEIGHT_MM = 250;
-export const DEFAULT_REAR_PICKUP_HEIGHT_MM = 250;
-export const DEFAULT_CONTROL_ARM_LENGTH_MM = 320;
-export const DEFAULT_BALL_JOINT_OFFSET_MM = 12;
-export const DEFAULT_CONTROL_ARM_ROTATION_RAD = 0;
-export const DEFAULT_STEERING_RACK_WIDTH_MM = 850;
-export const DEFAULT_STEERING_RACK_HEIGHT_MM = 362;
-export const DEFAULT_STEERING_RACK_OFFSET_MM = 166;
-export const DEFAULT_STEERING_HOUSING_WIDTH_MM = 500;
-export const DEFAULT_STEERING_LIMITER_MM = 10;
-export const DEFAULT_STEERING_RACK_TRAVEL_MM = 0;
-export const DEFAULT_TIE_ROD_LENGTH_MM = 338;
-export const DEFAULT_STRUT_MOUNT_ANGLE_DEG = 20;
-export const DEFAULT_STRUT_MAX_LENGTH_MM = 650;
-export const DEFAULT_STRUT_MIN_LENGTH_MM = 450;
-export const DEFAULT_TOP_MOUNT_HEIGHT_MM = 900;
-export const DEFAULT_TOP_MOUNT_WIDTH_MM = 960;
-export const DEFAULT_TOP_MOUNT_OFFSET_MM = 30;
-export const DEFAULT_STEERING_PIVOT_HEIGHT_MM = 125;
-export const DEFAULT_STEERING_PIVOT_DEPTH_MM = 210;
-export const DEFAULT_STEERING_PIVOT_OFFSET_MM = -24;
-export const DEFAULT_STRUT_MOUNT_HEIGHT_MM = 130;
-export const DEFAULT_STRUT_MOUNT_OFFSET_MM = -10;
-export const DEFAULT_STRUT_MOUNT_LOCATION_MM = -89;
-export const DEFAULT_HUB_HEIGHT_MM = 60;
-export const DEFAULT_HUB_SPACING_MM = 94;
-export const DEFAULT_WHEEL_OFFSET_MM = -42;
-export const DEFAULT_WHEEL_DIAMETER_IN = 15;
-export const DEFAULT_TIRE_SECTION_WIDTH_MM = 195;
-export const DEFAULT_TIRE_ASPECT_RATIO = 65;
-export const DEFAULT_SPRING_RATE_N_PER_MM = 50;
-export const DEFAULT_MAIN_ARM_INNER_MOUNT_WIDTH_MM = 750;
-
 export function validateProject(value: unknown): SuspensionProject {
   if (!value || typeof value !== "object") {
     throw new Error("Project file must contain a JSON object.");

@@ -60,9 +60,9 @@ describe("project template assignments", () => {
     }]));
 
     expect(loadProjects().projects[0].rearSuspension.mainArmInnerMountHeightMm).toBe(250);
-    expect(loadProjects().projects[0].rearSuspension.frontToRearLengthMm).toBe(1600);
+    expect(loadProjects().projects[0].rearSuspension.frontToRearLengthMm).toBe(1900);
     expect(loadProjects().projects[0].rearSuspension).toMatchObject({
-      toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+      toeArmInnerMountWidthMm: 685, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
     });
   });
 
@@ -84,6 +84,22 @@ describe("project template assignments", () => {
     saveProjects(loaded.projects, loaded.templateKeys, loaded.unreadable);
     expect(JSON.parse(storage.get(PROJECTS_KEY)!)).toEqual([good, bad]);
     expect(JSON.parse(storage.get(TEMPLATE_KEYS_KEY)!)).toEqual({ "good-id": "default", "bad-id": "default" });
+  });
+
+  it("preserves saved projects with a negative strut angle as unreadable", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    });
+    const bad = createProjectFromTemplate("default", "Negative angle", "negative-angle");
+    bad.wheelKnuckle.strutMountAngleDeg = -20;
+    storage.set(PROJECTS_KEY, JSON.stringify([bad]));
+    const loaded = loadProjects();
+    expect(loaded.projects).toEqual([]);
+    expect(loaded.unreadable).toEqual([bad]);
+    expect(loaded.warning).toContain("Strut Mount Angle");
+    saveProjects(loaded.projects, loaded.templateKeys, loaded.unreadable);
+    expect(JSON.parse(storage.get(PROJECTS_KEY)!)).toEqual([bad]);
   });
 
   it("backs up unparseable storage before reporting it", () => {
@@ -119,9 +135,9 @@ describe("project template assignments", () => {
     const file = { text: async () => text } as File;
 
     expect((await readProjectFile(file)).rearSuspension.mainArmInnerMountHeightMm).toBe(250);
-    expect((await readProjectFile(file)).rearSuspension.frontToRearLengthMm).toBe(1600);
+    expect((await readProjectFile(file)).rearSuspension.frontToRearLengthMm).toBe(1900);
     expect((await readProjectFile(file)).rearSuspension).toMatchObject({
-      toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+      toeArmInnerMountWidthMm: 685, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
     });
   });
 });

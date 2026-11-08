@@ -1,3 +1,4 @@
+import { allProjectFields, getFieldValue } from "../domain/fields";
 import type { SuspensionProject } from "../domain/types";
 import type { WheelAlignmentMeasurements } from "../domain/coordinates";
 import type { UiElements } from "./elements";
@@ -14,60 +15,7 @@ export function createUiRenderers(state: ProjectState, elements: UiElements, upd
     scrubRadiusOutput,
     motionRatioOutput,
     wheelRateOutput,
-    widthInput,
-    rearWidthInput,
-    frontHeightInput,
-    rearHeightInput,
-    controlArmDepthInput,
-    controlArmLengthInput,
-    ballJointOffsetInput,
-    steeringRackWidthInput,
-    steeringRackHeightInput,
-    steeringRackOffsetInput,
-    steeringHousingWidthInput,
-    steeringLimiterInput,
-    tieRodLengthInput,
-    topMountHeightInput,
-    topMountWidthInput,
-    topMountOffsetInput,
-    steeringPivotHeightInput,
-    steeringPivotDepthInput,
-    steeringPivotOffsetInput,
-    strutMountHeightInput,
-    strutMountOffsetInput,
-    strutMountLocationInput,
-    strutMountAngleInput,
-    strutMaxLengthInput,
-    strutMinLengthInput,
-    strutStaticLengthInput,
-    hubHeightInput,
-    hubSpacingInput,
-    wheelOffsetInput,
-    wheelDiameterInput,
-    tireSectionWidthInput,
-    tireAspectRatioInput,
-    springRateInput,
-    rearMainArmInnerMountWidthInput,
-    rearCamberArmInnerMountHeightInput,
-    rearCamberArmInnerMountForwardOffsetInput,
-    rearCamberArmInnerMountWidthInput,
-    rearMainArmInnerMountHeightInput,
-    rearFrontToRearLengthInput,
-    rearToeArmInnerMountWidthInput,
-    rearToeArmInnerMountHeightInput,
-    rearToeArmMainArmWidthInput,
-    rearMainArmLengthInput,
-    rearToeArmLengthInput,
-    rearMainArmOuterMountStaticHeightInput,
-    rearToeArmOuterMountOffsetInput,
-    rearToeArmOuterMountHeightInput,
-    rearToeArmOuterMountHeightOffsetInput,
-    rearToeArmOuterMountForwardOffsetInput,
-    rearToeArmOuterMountLateralOffsetInput,
-    rearTrailingArmLengthInput,
-    rearTrailingArmMountHeightInput,
-    rearTrailingArmMountWidthInput,
-    rearTrailingArmMountForwardOffsetInput,
+    parameterInputs,
   } = elements;
   let noticeTimer: number | undefined;
   function showNotice(message: string, type: "error" | "success" = "success"): void {
@@ -90,67 +38,12 @@ export function createUiRenderers(state: ProjectState, elements: UiElements, upd
   }
 
   function renderGeometry(): void {
-    widthInput.value = String(state.current.frontLowerControlArmPickup.widthMm);
-    rearWidthInput.value = String(state.current.frontLowerControlArmPickup.rearWidthMm);
-    controlArmDepthInput.value = String(state.current.frontLowerControlArmPickup.controlArmDepthMm);
-    frontHeightInput.value = String(state.current.frontLowerControlArmPickup.frontHeightMm);
-    rearHeightInput.value = String(state.current.frontLowerControlArmPickup.rearHeightMm);
-    controlArmLengthInput.value = String(state.current.frontControlArm.lengthMm);
-    ballJointOffsetInput.value = String(state.current.frontControlArm.ballJointOffsetMm);
-    steeringRackWidthInput.value = String(state.current.steeringRack.widthMm);
-    steeringRackHeightInput.value = String(state.current.steeringRack.centerlineHeightMm);
-    steeringRackOffsetInput.value = String(state.current.steeringRack.centerlineOffsetMm);
-    steeringHousingWidthInput.value = String(state.current.steeringRack.housingWidthMm);
-    steeringLimiterInput.value = String(state.current.steeringRack.steeringLimiterMm);
-    tieRodLengthInput.value = state.current.steeringRack.tieRodLengthMm.toFixed(1);
-    topMountHeightInput.value = String(state.current.frontTopMount.heightMm);
-    topMountWidthInput.value = String(state.current.frontTopMount.widthMm);
-    topMountOffsetInput.value = String(state.current.frontTopMount.offsetMm);
-    steeringPivotHeightInput.value = String(state.current.wheelKnuckle.steeringPivotHeightMm);
-    steeringPivotDepthInput.value = String(state.current.wheelKnuckle.steeringPivotDepthMm);
-    steeringPivotOffsetInput.value = String(state.current.wheelKnuckle.steeringPivotOffsetMm);
-    strutMountHeightInput.value = String(state.current.wheelKnuckle.strutMountHeightMm);
-    strutMountOffsetInput.value = String(state.current.wheelKnuckle.strutMountOffsetMm);
-    strutMountLocationInput.value = String(state.current.wheelKnuckle.strutMountLocationMm);
-    strutMountAngleInput.value = String(state.current.wheelKnuckle.strutMountAngleDeg);
-    strutMaxLengthInput.value = String(state.current.wheelKnuckle.strutMaxLengthMm);
-    strutMinLengthInput.value = String(state.current.wheelKnuckle.strutMinLengthMm);
-    strutStaticLengthInput.value = String(state.current.wheelKnuckle.strutStaticLengthMm);
-    hubHeightInput.value = String(state.current.wheelKnuckle.hubHeightMm);
-    hubSpacingInput.value = String(state.current.wheelKnuckle.hubSpacingMm);
-    wheelOffsetInput.value = String(state.current.wheelTire.wheelOffsetMm);
-    wheelDiameterInput.value = String(state.current.wheelTire.wheelDiameterIn);
-    tireSectionWidthInput.value = String(state.current.wheelTire.tireSectionWidthMm);
-    tireAspectRatioInput.value = String(state.current.wheelTire.tireAspectRatio);
-    springRateInput.value = String(state.current.suspension.springRateNPerMm);
-    rearCamberArmInnerMountHeightInput.value =
-      String(state.current.rearSuspension.camberArmInnerMountHeightMm);
-    rearCamberArmInnerMountForwardOffsetInput.value =
-      String(state.current.rearSuspension.camberArmInnerMountForwardOffsetMm);
-    rearCamberArmInnerMountWidthInput.value =
-      String(state.current.rearSuspension.camberArmInnerMountWidthMm);
-    rearMainArmInnerMountWidthInput.value =
-      String(state.current.rearSuspension.mainArmInnerMountWidthMm);
-    rearMainArmInnerMountHeightInput.value =
-      String(state.current.rearSuspension.mainArmInnerMountHeightMm);
-    rearFrontToRearLengthInput.value = String(state.current.rearSuspension.frontToRearLengthMm);
-    rearToeArmInnerMountWidthInput.value = String(state.current.rearSuspension.toeArmInnerMountWidthMm);
-    rearToeArmInnerMountHeightInput.value = String(state.current.rearSuspension.toeArmInnerMountHeightMm);
-    rearToeArmMainArmWidthInput.value = String(state.current.rearSuspension.toeArmMainArmWidthMm);
-    rearMainArmLengthInput.value = String(state.current.rearSuspension.mainArmLengthMm);
-    rearToeArmLengthInput.value = String(state.current.rearSuspension.toeArmLengthMm);
-    rearMainArmOuterMountStaticHeightInput.value =
-      String(state.current.rearHub.mainArmOuterMountStaticHeightMm);
-    rearToeArmOuterMountOffsetInput.value = String(state.current.rearHub.toeArmOuterMountOffsetMm);
-    rearToeArmOuterMountHeightInput.value = String(state.current.rearHub.toeArmOuterMountHeightMm);
-    rearToeArmOuterMountHeightOffsetInput.value = String(state.current.rearHub.toeArmOuterMountHeightOffsetMm);
-    rearToeArmOuterMountForwardOffsetInput.value = String(state.current.rearHub.toeArmOuterMountForwardOffsetMm);
-    rearToeArmOuterMountLateralOffsetInput.value = String(state.current.rearHub.toeArmOuterMountLateralOffsetMm);
-    rearTrailingArmLengthInput.value = String(state.current.rearHub.trailingArmLengthMm);
-    rearTrailingArmMountHeightInput.value = String(state.current.rearHub.trailingArmMountHeightMm);
-    rearTrailingArmMountWidthInput.value = String(state.current.rearHub.trailingArmMountWidthMm);
-    rearTrailingArmMountForwardOffsetInput.value =
-      String(state.current.rearHub.trailingArmMountForwardOffsetMm);
+    for (const field of allProjectFields) {
+      const ui = field.definition.ui;
+      if (!ui) continue;
+      const value = getFieldValue(state.current, field);
+      parameterInputs[ui.id].value = ui.precision === undefined ? String(value) : value.toFixed(ui.precision);
+    }
     document.querySelector("#front-point-spacing")!.textContent =
       `${(state.current.frontLowerControlArmPickup.widthMm * 2).toFixed(0)} mm`;
     updateViewer(state.current);

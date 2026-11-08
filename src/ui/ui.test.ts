@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createProjectFromTemplate, DEFAULT_TEMPLATE_KEY } from "../templates/templates";
+import { allProjectFields, getFieldValue } from "../domain/fields";
+import { validateProject } from "../domain/project";
 import * as persistence from "../persistence/projects";
 import { getUiElements } from "./elements";
 import { bindInputs } from "./inputs";
@@ -31,6 +33,18 @@ describe("UI composition", () => {
     expect(page).toContain(renderAlignmentPanel());
     for (const id of ["project-select", "template-dialog", "tab-front", "tab-rear", "viewport", "show-scrub-geometry", "toe-total", "notice"]) {
       expect(page.match(new RegExp(`id="${id}"`, "g"))).toHaveLength(1);
+    }
+  });
+
+  it("renders every registered control once with its label, hint and numeric attributes", () => {
+    const page = renderSidebar();
+    const controls = allProjectFields.flatMap(({ definition }) => definition.ui ? [definition.ui] : []);
+    expect(new Set(controls.map(({ id }) => id)).size).toBe(controls.length);
+    for (const { id, label, hint, unit, min, step } of controls) {
+      expect(page.match(new RegExp(`id="${id}"`, "g"))).toHaveLength(1);
+      expect(page).toContain(`for="${id}"`);
+      expect(page).toContain(`<strong>${label}</strong><small>${hint}</small>`);
+      expect(page).toContain(`<input id="${id}" type="number"${min === undefined ? "" : ` min="${min}"`} step="${step}" /> <small>${unit}</small>`);
     }
   });
 });
@@ -130,6 +144,85 @@ describe("UI bindings", () => {
     getNode("#pickup-width").dispatchEvent(new Event("change"));
     expect(state.current.frontLowerControlArmPickup.widthMm).toBe(510);
     expect(original.frontLowerControlArmPickup.widthMm).not.toBe(510);
+    expect(persist).toHaveBeenCalledOnce();
+  });
+
+  it.each(allProjectFields.filter((field) => field.definition.ui))(
+    "matches project validation for UI boundaries on $section.$key",
+    (field) => {
+      const ui = field.definition.ui!;
+      const inputs = ["", "0", "-1"];
+      if (field.key !== "strutStaticLengthMm") inputs.push("0.5");
+      for (const inputValue of inputs) {
+        nodes.clear();
+        vi.clearAllMocks();
+        const state = makeState();
+        const persist = vi.fn(() => true);
+        const before = getFieldValue(state.current, field);
+        const candidate = structuredClone(state.current);
+        (candidate[field.section] as Record<string, number>)[field.key] = Number(inputValue);
+        let accepted = true;
+        try {
+          validateProject(candidate);
+        } catch {
+          accepted = false;
+        }
+        bindInputs(state, getUiElements(), renderers, persist);
+        const input = getNode(`#${ui.id}`);
+        input.value = inputValue;
+        input.dispatchEvent(new Event("change"));
+        expect(getFieldValue(state.current, field)).toBe(accepted ? Number(inputValue) : before);
+        expect(persist).toHaveBeenCalledTimes(accepted ? 1 : 0);
+        expect(renderers.showNotice).toHaveBeenCalledTimes(accepted ? 0 : 1);
+        expect(renderers.renderGeometry).toHaveBeenCalledOnce();
+      }
+    },
+  );
+
+  it("renders current values with registered precision", () => {
+    const state = makeState();
+    state.current.steeringRack.tieRodLengthMm = 338.25;
+    const updateViewer = vi.fn();
+    const ui = createUiRenderers(state, getUiElements(), updateViewer);
+    ui.renderGeometry();
+    for (const field of allProjectFields) {
+      const metadata = field.definition.ui;
+      if (!metadata) continue;
+      const value = getFieldValue(state.current, field);
+      expect(getNode(`#${metadata.id}`).value).toBe(
+        metadata.precision === undefined ? String(value) : value.toFixed(metadata.precision),
+      );
+    }
+    expect(updateViewer).toHaveBeenCalledWith(state.current);
+  });
+
+  it("rejects reversed strut limits and rolls back an unreachable static length", () => {
+    const state = makeState();
+    const before = structuredClone(state.current);
+    const persist = vi.fn(() => true);
+    bindInputs(state, getUiElements(), renderers, persist);
+    getNode("#strut-min-length").value = String(before.wheelKnuckle.strutMaxLengthMm);
+    getNode("#strut-min-length").dispatchEvent(new Event("change"));
+    expect(renderers.showNotice).toHaveBeenCalledWith(
+      "Strut Min Length must be positive, finite, and less than Strut Max Length.", "error",
+    );
+    getNode("#strut-static-length").value = "1000";
+    getNode("#strut-static-length").dispatchEvent(new Event("change"));
+    expect(state.current).toEqual(before);
+    expect(persist).not.toHaveBeenCalled();
+    expect(renderers.showNotice).toHaveBeenCalledTimes(2);
+  });
+
+  it("repositions both struts and persists a valid static length", () => {
+    const state = makeState();
+    const persist = vi.fn(() => true);
+    bindInputs(state, getUiElements(), renderers, persist);
+    getNode("#strut-static-length").value = "600";
+    getNode("#strut-static-length").dispatchEvent(new Event("change"));
+    expect(state.current.wheelKnuckle.strutStaticLengthMm).toBe(600);
+    expect(state.current.frontControlArm.leftRotationRad).not.toBe(0);
+    expect(state.current.frontControlArm.rightRotationRad).not.toBe(0);
+    expect(renderers.showNotice).not.toHaveBeenCalled();
     expect(persist).toHaveBeenCalledOnce();
   });
 

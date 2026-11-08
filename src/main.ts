@@ -253,6 +253,18 @@ app.innerHTML = `
                 <span><strong>Front to Rear length</strong><small>Rearward from front control arm front mounts</small></span>
                 <span class="dimension-input"><input id="rear-front-to-rear-length" type="number" min="1" step="1" /> <small>mm</small></span>
               </label>
+              <label class="dimension-field" for="rear-toe-arm-inner-mount-width">
+                <span><strong>Toe arm inner mount width</strong><small>Distance between left and right inner mounts</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-inner-mount-width" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-toe-arm-inner-mount-height">
+                <span><strong>Toe arm inner mount height</strong><small>Height above the ground plane</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-inner-mount-height" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
+              <label class="dimension-field" for="rear-toe-arm-main-arm-width">
+                <span><strong>Toe arm Main arm width</strong><small>Forward from rear main arm inner mounts</small></span>
+                <span class="dimension-input"><input id="rear-toe-arm-main-arm-width" type="number" min="1" step="1" /> <small>mm</small></span>
+              </label>
             </section>
           </div>
         </div>
@@ -367,6 +379,12 @@ const rearMainArmInnerMountHeightInput =
   document.querySelector<HTMLInputElement>("#rear-main-arm-inner-mount-height")!;
 const rearFrontToRearLengthInput =
   document.querySelector<HTMLInputElement>("#rear-front-to-rear-length")!;
+const rearToeArmInnerMountWidthInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-inner-mount-width")!;
+const rearToeArmInnerMountHeightInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-inner-mount-height")!;
+const rearToeArmMainArmWidthInput =
+  document.querySelector<HTMLInputElement>("#rear-toe-arm-main-arm-width")!;
 const scrubGeometryToggle = document.querySelector<HTMLInputElement>("#show-scrub-geometry")!;
 let scrubGeometryVisible = scrubGeometryToggle.checked;
 let viewer: ChassisScene | undefined;
@@ -449,6 +467,9 @@ function renderGeometry(): void {
   rearMainArmInnerMountHeightInput.value =
     String(current.rearSuspension.mainArmInnerMountHeightMm);
   rearFrontToRearLengthInput.value = String(current.rearSuspension.frontToRearLengthMm);
+  rearToeArmInnerMountWidthInput.value = String(current.rearSuspension.toeArmInnerMountWidthMm);
+  rearToeArmInnerMountHeightInput.value = String(current.rearSuspension.toeArmInnerMountHeightMm);
+  rearToeArmMainArmWidthInput.value = String(current.rearSuspension.toeArmMainArmWidthMm);
   document.querySelector("#front-point-spacing")!.textContent =
     `${(current.frontLowerControlArmPickup.widthMm * 2).toFixed(0)} mm`;
   viewer?.update(current);
@@ -587,6 +608,12 @@ rearMainArmInnerMountHeightInput.addEventListener("change", () =>
   updateRearSuspensionDimension("mainArmInnerMountHeightMm", rearMainArmInnerMountHeightInput, "Main arm inner mount height"));
 rearFrontToRearLengthInput.addEventListener("change", () =>
   updateRearSuspensionDimension("frontToRearLengthMm", rearFrontToRearLengthInput, "Front to rear length"));
+rearToeArmInnerMountWidthInput.addEventListener("change", () =>
+  updateRearSuspensionDimension("toeArmInnerMountWidthMm", rearToeArmInnerMountWidthInput, "Toe arm inner mount width"));
+rearToeArmInnerMountHeightInput.addEventListener("change", () =>
+  updateRearSuspensionDimension("toeArmInnerMountHeightMm", rearToeArmInnerMountHeightInput, "Toe arm inner mount height"));
+rearToeArmMainArmWidthInput.addEventListener("change", () =>
+  updateRearSuspensionDimension("toeArmMainArmWidthMm", rearToeArmMainArmWidthInput, "Toe arm Main arm width"));
 
 function updateRearSuspensionDimension(
   key: keyof SuspensionProject["rearSuspension"],

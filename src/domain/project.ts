@@ -80,6 +80,15 @@ export function validateProject(value: unknown): SuspensionProject {
   const frontToRearLengthMm: unknown = rearSuspension.frontToRearLengthMm === undefined
     ? 1600
     : rearSuspension.frontToRearLengthMm;
+  const toeArmInnerMountWidthMm: unknown = rearSuspension.toeArmInnerMountWidthMm === undefined
+    ? 850
+    : rearSuspension.toeArmInnerMountWidthMm;
+  const toeArmInnerMountHeightMm: unknown = rearSuspension.toeArmInnerMountHeightMm === undefined
+    ? 250
+    : rearSuspension.toeArmInnerMountHeightMm;
+  const toeArmMainArmWidthMm: unknown = rearSuspension.toeArmMainArmWidthMm === undefined
+    ? 190
+    : rearSuspension.toeArmMainArmWidthMm;
   if (typeof widthMm !== "number" || !Number.isFinite(widthMm) || widthMm <= 0 ||
       typeof rearWidthMm !== "number" || !Number.isFinite(rearWidthMm) || rearWidthMm <= 0 ||
       typeof controlArmDepthMm !== "number" || !Number.isFinite(controlArmDepthMm) || controlArmDepthMm <= 0 ||
@@ -145,6 +154,18 @@ export function validateProject(value: unknown): SuspensionProject {
       !Number.isFinite(frontToRearLengthMm) || frontToRearLengthMm <= 0) {
     throw new Error("Front to rear length must be a positive finite value.");
   }
+  if (typeof toeArmInnerMountWidthMm !== "number" ||
+      !Number.isFinite(toeArmInnerMountWidthMm) || toeArmInnerMountWidthMm <= 0) {
+    throw new Error("Toe arm inner mount width must be a positive finite value.");
+  }
+  if (typeof toeArmInnerMountHeightMm !== "number" ||
+      !Number.isFinite(toeArmInnerMountHeightMm) || toeArmInnerMountHeightMm <= 0) {
+    throw new Error("Toe arm inner mount height must be a positive finite value.");
+  }
+  if (typeof toeArmMainArmWidthMm !== "number" ||
+      !Number.isFinite(toeArmMainArmWidthMm) || toeArmMainArmWidthMm <= 0) {
+    throw new Error("Toe arm Main arm width must be a positive finite value.");
+  }
   return {
     id: project.id,
     name: project.name,
@@ -189,6 +210,13 @@ export function validateProject(value: unknown): SuspensionProject {
       tireAspectRatio,
     },
     suspension: { springRateNPerMm },
-    rearSuspension: { mainArmInnerMountWidthMm, mainArmInnerMountHeightMm, frontToRearLengthMm },
+    rearSuspension: {
+      mainArmInnerMountWidthMm,
+      mainArmInnerMountHeightMm,
+      frontToRearLengthMm,
+      toeArmInnerMountWidthMm,
+      toeArmInnerMountHeightMm,
+      toeArmMainArmWidthMm,
+    },
   };
 }

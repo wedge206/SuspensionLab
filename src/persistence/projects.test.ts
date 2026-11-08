@@ -30,6 +30,9 @@ describe("project template assignments", () => {
     const project = createProjectFromTemplate("default", "Project", "project-id");
     project.rearSuspension.mainArmInnerMountHeightMm = 315;
     project.rearSuspension.frontToRearLengthMm = 1800;
+    project.rearSuspension.toeArmInnerMountWidthMm = 910;
+    project.rearSuspension.toeArmInnerMountHeightMm = 310;
+    project.rearSuspension.toeArmMainArmWidthMm = 210;
 
     saveProjects([project], { "project-id": "default" });
 
@@ -37,6 +40,9 @@ describe("project template assignments", () => {
     expect(JSON.parse(storage.get(TEMPLATE_KEYS_KEY)!)).toEqual({ "project-id": "default" });
     expect(loadProjects().projects[0].rearSuspension.mainArmInnerMountHeightMm).toBe(315);
     expect(loadProjects().projects[0].rearSuspension.frontToRearLengthMm).toBe(1800);
+    expect(loadProjects().projects[0].rearSuspension).toMatchObject({
+      toeArmInnerMountWidthMm: 910, toeArmInnerMountHeightMm: 310, toeArmMainArmWidthMm: 210,
+    });
   });
 
   it("loads saved projects without a rear main arm inner mount height", () => {
@@ -52,6 +58,9 @@ describe("project template assignments", () => {
 
     expect(loadProjects().projects[0].rearSuspension.mainArmInnerMountHeightMm).toBe(250);
     expect(loadProjects().projects[0].rearSuspension.frontToRearLengthMm).toBe(1600);
+    expect(loadProjects().projects[0].rearSuspension).toMatchObject({
+      toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+    });
   });
 
   it("imports projects without a rear main arm inner mount height", async () => {
@@ -64,5 +73,8 @@ describe("project template assignments", () => {
 
     expect((await readProjectFile(file)).rearSuspension.mainArmInnerMountHeightMm).toBe(250);
     expect((await readProjectFile(file)).rearSuspension.frontToRearLengthMm).toBe(1600);
+    expect((await readProjectFile(file)).rearSuspension).toMatchObject({
+      toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+    });
   });
 });

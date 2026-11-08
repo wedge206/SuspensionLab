@@ -53,6 +53,9 @@
   "rearSuspension": {
     "mainArmInnerMountWidthMm": 750,
     "mainArmInnerMountHeightMm": 250,
-    "frontToRearLengthMm": 1600
+    "frontToRearLengthMm": 1900,
+    "toeArmInnerMountWidthMm": 1000,
+    "toeArmInnerMountHeightMm": 260,
+    "toeArmMainArmWidthMm": 201
   }
 }

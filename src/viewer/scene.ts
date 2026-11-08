@@ -6,6 +6,7 @@ import {
   frontTopMountPoints,
   orientHubPoint,
   rearMainArmInnerMountPoints,
+  rearToeArmInnerMountPoints,
   steeredHubFacePoints,
   steeringKnucklePivotPoints,
   steeringRackPivotPoints,
@@ -69,6 +70,10 @@ export class ChassisScene {
   private readonly rearMainArmInnerMounts = [
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x80b69d, roughness: 0.4 })),
     new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0x80b69d, roughness: 0.4 })),
+  ];
+  private readonly rearToeArmInnerMounts = [
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
+    new THREE.Mesh(new THREE.SphereGeometry(24, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe7d36b, roughness: 0.4 })),
   ];
   private readonly ballJoints = [
     new THREE.Mesh(new THREE.SphereGeometry(28, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe77858, roughness: 0.4 })),
@@ -274,6 +279,7 @@ export class ChassisScene {
       this.strutMountAngleMarkers,
       ...this.pickups,
       ...this.rearMainArmInnerMounts,
+      ...this.rearToeArmInnerMounts,
       ...this.ballJoints,
       ...this.steeringRackPivots,
       ...this.topMountPoints,
@@ -335,6 +341,13 @@ export class ChassisScene {
       project.rearSuspension.mainArmInnerMountHeightMm,
     );
     this.rearMainArmInnerMounts.forEach((mount, index) => mount.position.set(...rearMounts[index]));
+    const toeArmMounts = rearToeArmInnerMountPoints(
+      rearMounts,
+      project.rearSuspension.toeArmInnerMountWidthMm,
+      project.rearSuspension.toeArmInnerMountHeightMm,
+      project.rearSuspension.toeArmMainArmWidthMm,
+    );
+    this.rearToeArmInnerMounts.forEach((mount, index) => mount.position.set(...toeArmMounts[index]));
     points.ballJoint.forEach((point, index) => this.ballJoints[index].position.set(...point));
     const rackPivots = steeringRackPivotPoints(
       project.steeringRack.widthMm,
@@ -680,7 +693,7 @@ export class ChassisScene {
     this.renderer.domElement.removeEventListener("pointerleave", this.onPointerLeave);
     this.controls.dispose();
     this.renderer.dispose();
-    for (const pickup of [...this.pickups, ...this.rearMainArmInnerMounts]) {
+    for (const pickup of [...this.pickups, ...this.rearMainArmInnerMounts, ...this.rearToeArmInnerMounts]) {
       pickup.geometry.dispose();
       pickup.material.dispose();
     }

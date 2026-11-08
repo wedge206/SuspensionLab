@@ -55,7 +55,10 @@ describe("built-in project templates", () => {
         tireAspectRatio: 65,
       },
       suspension: { springRateNPerMm: 50 },
-      rearSuspension: { mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600 },
+      rearSuspension: {
+        mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
+        toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+      },
     });
   });
 
@@ -65,12 +68,18 @@ describe("built-in project templates", () => {
     project.frontLowerControlArmPickup.widthMm = 700;
     project.rearSuspension.mainArmInnerMountHeightMm = 300;
     project.rearSuspension.frontToRearLengthMm = 1800;
+    project.rearSuspension.toeArmInnerMountWidthMm = 900;
+    project.rearSuspension.toeArmInnerMountHeightMm = 300;
+    project.rearSuspension.toeArmMainArmWidthMm = 200;
 
     expect(resetProjectToTemplate(project, DEFAULT_TEMPLATE_KEY)).toMatchObject({
       id: "existing-id",
       name: "Renamed",
       frontLowerControlArmPickup: { widthMm: 465 },
-      rearSuspension: { mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600 },
+      rearSuspension: {
+        mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
+        toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+      },
     });
   });
 });

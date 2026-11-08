@@ -6,6 +6,7 @@ import {
   hubFacePoints,
   orientHubPoint,
   rearMainArmInnerMountPoints,
+  rearToeArmInnerMountPoints,
   steeringKnucklePivotPoints,
   steeringRackPivotPoints,
   steeringRackTravelLimitMm,
@@ -43,6 +44,27 @@ describe("front lower control arm pickup points", () => {
         expect(front[side][0] - rear[side][0]).toBe(1600);
       }
       expect(rear[0][1] - rear[1][1]).toBe(750);
+    });
+
+    describe("rear toe arm inner mount points", () => {
+      it("places the default points forward of the main arm mounts at the configured width and height", () => {
+        const rear = rearMainArmInnerMountPoints(1600, 750, 250);
+        const toe = rearToeArmInnerMountPoints(rear, 850, 250, 190);
+        expect(toe).toEqual([[-760, 425, 250], [-760, -425, 250]]);
+        for (let side = 0; side < 2; side += 1) {
+          expect(toe[side][0] - rear[side][0]).toBe(190);
+        }
+        expect(toe[0][1] - toe[1][1]).toBe(850);
+      });
+
+      it("follows the rear mount station and uses the toe arm dimensions independently", () => {
+        const rear = rearMainArmInnerMountPoints(1720, 700, 330);
+        const toe = rearToeArmInnerMountPoints(rear, 930, 285, 215);
+        expect(toe).toEqual([[-855, 465, 285], [-855, -465, 285]]);
+        expect(toe[0][1] - toe[1][1]).toBe(930);
+        expect(toe[0][0] - rear[0][0]).toBe(215);
+        expect(toe[1][0] - rear[1][0]).toBe(215);
+      });
     });
 
     it("updates longitudinal position, spacing, and ground height independently", () => {
@@ -539,7 +561,10 @@ describe("front lower control arm pickup points", () => {
         tireAspectRatio: 65,
       },
       suspension: { springRateNPerMm: 50 },
-      rearSuspension: { mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600 },
+      rearSuspension: {
+        mainArmInnerMountWidthMm: 750, mainArmInnerMountHeightMm: 250, frontToRearLengthMm: 1600,
+        toeArmInnerMountWidthMm: 850, toeArmInnerMountHeightMm: 250, toeArmMainArmWidthMm: 190,
+      },
     };
 
     const ratios = suspensionMotionRatios(project);

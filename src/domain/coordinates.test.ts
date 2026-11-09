@@ -776,6 +776,8 @@ describe("front lower control arm pickup points", () => {
                 trailingArmMountForwardOffsetMm: 290,
                 trailingArmLateralOffsetMm: 0,
                 trailingArmHeightMm: 10,
+                trailingArmTwistLimitDeg: 10,
+                trailingArmBendingLimitDeg: 10,
             },
         };
 

@@ -110,7 +110,7 @@ describe("viewer kinematics behavior", () => {
                 expect(camber.visible).toBe(true);
                 const inner = builder.rearCamberArmInnerMounts[side];
                 expect(camber.position.distanceTo(inner.position)).toBeCloseTo(project.rearSuspension.camberArmLengthMm);
-                expect(camber.position.distanceTo(main.position)).toBeCloseTo(Math.hypot(189, 97));
+                expect(camber.position.distanceTo(main.position)).toBeCloseTo(Math.hypot(190, 97));
                 for (const [index, vertex] of [inner.position, camber.position].entries()) {
                     for (const [axis, get] of [["x", "getX"], ["y", "getY"], ["z", "getZ"]] as const) {
                         expect(arms[get](side * 2 + index)).toBeCloseTo(vertex[axis], 3);

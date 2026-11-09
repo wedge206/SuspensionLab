@@ -1,7 +1,7 @@
 import {
     controlArmPickupPoints, frontTopMountPoints, orientHubPoint, rearCamberArmInnerMountPoints,
-    rearMainArmInnerMountPoints, rearMainArmOuterMountPoints, rearToeArmInnerMountPoints,
-    rearTrailingArmMountPoints, rearTrailingArmPoints, solveRearHubMounts, steeredHubFacePoints, steeringKnucklePivotPoints,
+    rearMainArmInnerMountPoints, rearToeArmInnerMountPoints,
+    rearTrailingArmMountPoints, steeredHubFacePoints, steeringKnucklePivotPoints,
     steeringRackPivotPoints, strutMountAngleSegments, strutMountPoints, suspensionMotionRatios,
     tieRodConstrainedKnucklePoints, tireOverallDiameterMm, tireTreadCenter, trueHubFaceGeometry,
     wheelAlignmentMeasurements,
@@ -9,6 +9,7 @@ import {
 import {FRONT_GEOMETRY_ERROR_CODES, isGeometryError, REAR_GEOMETRY_ERROR_CODES} from "./geometryError";
 import {STRUT_TRAVEL_TOLERANCE_MM, strutTravelViolation} from "./strutTravel";
 import type {SuspensionProject, Vec3} from "./types";
+import {solvePinnedRearHub} from "./rearPinnedHub";
 
 export function calculateGroundStations(project: SuspensionProject) {
     const rear = rearMainArmInnerMountPoints(
@@ -26,6 +27,26 @@ export function calculateGroundStations(project: SuspensionProject) {
         controlArmDepthMm: project.frontLowerControlArmPickup.controlArmDepthMm,
         frontHeightMm: project.frontLowerControlArmPickup.frontHeightMm,
     };
+}
+
+export function solveProjectRearHub(
+    project: SuspensionProject, heights: [number, number],
+    mounts: {main: [Vec3, Vec3]; toe: [Vec3, Vec3]; camber: [Vec3, Vec3]; trailing: [Vec3, Vec3]},
+) {
+    const rear = project.rearSuspension;
+    const hub = project.rearHub;
+    return solvePinnedRearHub({
+        mainMounts: mounts.main, toeMounts: mounts.toe, camberMounts: mounts.camber, trailingMounts: mounts.trailing,
+        mainLengthMm: rear.mainArmLengthMm, toeLengthMm: rear.toeArmLengthMm, camberLengthMm: rear.camberArmLengthMm,
+        toeHeightMm: hub.toeArmOuterMountHeightOffsetMm, toeForwardMm: hub.toeArmOuterMountForwardOffsetMm,
+        toeLateralMm: hub.toeArmOuterMountLateralOffsetMm, camberHeightMm: hub.camberArmOuterMountHeightMm,
+        camberForwardMm: hub.camberArmOuterMountForwardOffsetMm, camberLateralMm: hub.camberArmOuterMountLateralOffsetMm,
+        trailingHeightMm: hub.trailingArmHeightMm, trailingLateralMm: hub.trailingArmLateralOffsetMm,
+        trailingLengthMm: hub.trailingArmLengthMm,
+        twistLimitRad: hub.trailingArmTwistLimitDeg * Math.PI / 180,
+        bendingLimitRad: hub.trailingArmBendingLimitDeg * Math.PI / 180,
+        heights,
+    });
 }
 
 export function solveSuspension(project: SuspensionProject) {
@@ -50,31 +71,20 @@ export function solveSuspension(project: SuspensionProject) {
     const trailingArmMounts = rearTrailingArmMountPoints(
         rearMounts, hub.trailingArmMountWidthMm, hub.trailingArmMountHeightMm, hub.trailingArmMountForwardOffsetMm,
     );
-    const nominalOuterMounts = rearMainArmOuterMountPoints(
-        rearMounts, trailingArmMounts, rear.mainArmLengthMm, hub.trailingArmLengthMm,
-        hub.mainArmOuterMountStaticHeightMm, rear.leftVerticalOffsetMm, rear.rightVerticalOffsetMm,
-    );
-    let rearSolution: ReturnType<typeof solveRearHubMounts> | null = null;
+    let rearSolution: ReturnType<typeof solveProjectRearHub> | null = null;
     let rearGeometryMessage = "";
     try {
-        rearSolution = solveRearHubMounts(
-            rearMounts, toeArmMounts, nominalOuterMounts, rear.mainArmLengthMm, rear.toeArmLengthMm,
-            hub.toeArmOuterMountHeightOffsetMm, hub.toeArmOuterMountForwardOffsetMm,
-            hub.toeArmOuterMountLateralOffsetMm, hub.mainArmOuterMountStaticHeightMm,
-            {
-                innerMounts: camberArmMounts, lengthMm: rear.camberArmLengthMm, heightMm: hub.camberArmOuterMountHeightMm,
-                forwardOffsetMm: hub.camberArmOuterMountForwardOffsetMm, lateralOffsetMm: hub.camberArmOuterMountLateralOffsetMm,
-            },
-            [rear.leftLongitudinalOffsetMm, rear.rightLongitudinalOffsetMm],
+        rearSolution = solveProjectRearHub(
+            project, [hub.mainArmOuterMountStaticHeightMm + rear.leftVerticalOffsetMm,
+                hub.mainArmOuterMountStaticHeightMm + rear.rightVerticalOffsetMm],
+            {main: rearMounts, toe: toeArmMounts, camber: camberArmMounts, trailing: trailingArmMounts},
         );
     } catch (error) {
         if (!isGeometryError(error, REAR_GEOMETRY_ERROR_CODES)) throw error;
         rearGeometryMessage = error.message;
     }
     const camberArmOuterMounts = rearSolution && rearSolution.camberOuterMounts;
-    const trailingArms = rearSolution && rearTrailingArmPoints(
-        rearSolution, rearSolution.orientations, hub.trailingArmHeightMm, hub.trailingArmLateralOffsetMm, hub.trailingArmLengthMm,
-    );
+    const trailingArms = rearSolution && rearSolution.trailingArms;
     const rackPivots = steeringRackPivotPoints(
         rack.widthMm, rack.centerlineHeightMm, rack.centerlineOffsetMm, rack.rackTravelMm,
     );

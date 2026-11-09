@@ -5,6 +5,7 @@
  */
 const GEOMETRY_ERROR_MESSAGES = {
     rearArmsUnreachable: "Rear arm lengths cannot reach all outer mounts with the current geometry.",
+    rearFlexLimitExceeded: "Rear trailing arm twist or bending exceeds its configured limit.",
     tieRodUnsatisfiable: "Tie Rod Length cannot be satisfied at the current ball joint position.",
     strutCannotReachTopMount: "Strut angle cannot reach the fixed top mount.",
 } as const;
@@ -18,7 +19,7 @@ export const FRONT_GEOMETRY_ERROR_CODES: readonly GeometryErrorCode[] = [
 ];
 
 /** Failures from the rear arm solve. */
-export const REAR_GEOMETRY_ERROR_CODES: readonly GeometryErrorCode[] = ["rearArmsUnreachable"];
+export const REAR_GEOMETRY_ERROR_CODES: readonly GeometryErrorCode[] = ["rearArmsUnreachable", "rearFlexLimitExceeded"];
 
 export class GeometryError extends Error {
     constructor(readonly code: GeometryErrorCode) {

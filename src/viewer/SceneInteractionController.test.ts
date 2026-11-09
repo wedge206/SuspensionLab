@@ -15,7 +15,7 @@ describe("SceneInteractionController", () => {
             .toEqual({longitudinalMm: 5, verticalMm: 0});
     });
 
-    it("drags the rear outer pivot in both axes and persists the resulting position", () => {
+    it("drags the rear outer pivot along the constrained path and persists the resulting position", () => {
         const project = createProjectFromTemplate("default", "Test", "test");
         const snapshot = solveSuspension(project);
         const outer = snapshot.rearSolution!.mainOuterMounts[0];
@@ -58,7 +58,9 @@ describe("SceneInteractionController", () => {
         pointer("pointerdown", 400, 400);
         expect(controller.state.draggingRearOuterMountIndex).toBe(0);
         pointer("pointermove", 400 + (end.x - start.x) * 400, 400 - (end.y - start.y) * 400);
-        expect(project.rearSuspension.leftLongitudinalOffsetMm).toBeCloseTo(30);
+        expect(project.rearSuspension.leftLongitudinalOffsetMm).toBeCloseTo(
+            mounts[0].position.x - outer[0], 6);
+        expect(project.rearSuspension.leftLongitudinalOffsetMm).not.toBeCloseTo(30);
         expect(project.rearSuspension.leftVerticalOffsetMm).toBeCloseTo(20);
         expect(project.rearSuspension.rightLongitudinalOffsetMm).toBe(0);
         pointer("pointerup", 400, 400);

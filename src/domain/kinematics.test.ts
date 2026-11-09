@@ -1,8 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {createProjectFromTemplate, DEFAULT_TEMPLATE_KEY} from "../templates/templates";
 import {solveSuspension} from "./kinematics";
-import {rearMainArmOuterMountPoints, solveRearArmMounts} from "./coordinates";
-import {isGeometryError, REAR_GEOMETRY_ERROR_CODES} from "./geometryError";
 import {STRUT_TRAVEL_TOLERANCE_MM} from "./strutTravel";
 import {
     acceptedFrontAngle, acceptedRearOffset, acceptedRearPosition, clampRackTravel, frontConstraintViolation,
@@ -14,10 +12,8 @@ function project() {
 }
 
 describe("solved suspension snapshot", () => {
-    it.each([[10, 25], [-15, -20]])("keeps trailing arms fixed to each hub with offsets %i and %i", (height, lateral) => {
+    it("pins the trailing arms and keeps the hub rigid during independent travel", () => {
         const value = project();
-        value.rearHub.trailingArmHeightMm = height;
-        value.rearHub.trailingArmLateralOffsetMm = lateral;
         const distance = (a: number[], b: number[]) =>
             Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
         const reference = solveSuspension(value);
@@ -25,30 +21,75 @@ describe("solved suspension snapshot", () => {
         const referenceDistances = ([0, 1] as const).map((side) =>
             [reference.rearSolution!.mainOuterMounts[side], reference.rearSolution!.toeOuterMounts[side],
                 reference.camberArmOuterMounts![side]].flatMap((point) =>
-                reference.trailingArms![side].slice(1).map((armPoint) => distance(point, armPoint))));
-        for (const [longitudinal, vertical] of [[-25, -20], [0, 0], [30, 20]]) {
-            value.rearSuspension.leftLongitudinalOffsetMm = longitudinal;
+                [distance(point, reference.trailingArms![side][1])]));
+        for (const vertical of [-20, -10, 0, 10, 20]) {
             value.rearSuspension.leftVerticalOffsetMm = vertical;
+            value.rearSuspension.rightVerticalOffsetMm = -vertical;
             const result = solveSuspension(value);
             expect(result.trailingArms).not.toBeNull();
             for (const side of [0, 1] as const) {
                 const [toe, start, end] = result.trailingArms![side];
                 expect(toe).toEqual(result.rearSolution!.toeOuterMounts[side]);
-                expect(distance(toe, start)).toBeCloseTo(Math.hypot(height, lateral), 8);
+                expect(distance(end, result.trailingArmMounts[side])).toBeLessThan(1e-9);
+                expect(distance(toe, start)).toBeCloseTo(
+                    Math.hypot(value.rearHub.trailingArmHeightMm, value.rearHub.trailingArmLateralOffsetMm), 8);
                 expect(distance(start, end)).toBeCloseTo(value.rearHub.trailingArmLengthMm, 8);
                 const vertices = [result.rearSolution!.mainOuterMounts[side], toe, result.camberArmOuterMounts![side]];
-                const distances = vertices.flatMap((point) => [distance(point, start), distance(point, end)]);
+                const distances = vertices.map((point) => distance(point, start));
                 distances.forEach((value, index) => expect(value).toBeCloseTo(referenceDistances[side][index], 7));
             }
         }
-        const before = solveSuspension(value);
-        value.rearHub.trailingArmHeightMm += 100;
-        value.rearHub.trailingArmLateralOffsetMm -= 100;
-        const after = solveSuspension(value);
-        expect(after.rearSolution).toEqual(before.rearSolution);
-        expect(after.trailingArms).not.toEqual(before.trailingArms);
         value.rearSuspension.mainArmLengthMm = 1;
         expect(solveSuspension(value).trailingArms).toBeNull();
+    });
+
+    it("uses separated mounts and bounded flex for continuous bump and droop", () => {
+        const value = project();
+        const initial = solveSuspension(value);
+        for (const side of [0, 1] as const) {
+            expect(initial.camberArmMounts[side][2] - initial.toeArmMounts[side][2]).toBe(100);
+            expect(initial.camberArmMounts[side][0] - initial.toeArmMounts[side][0]).toBe(100);
+        }
+        let previous = initial.rearSolution!.mainOuterMounts[0];
+        for (let height = 0; height <= 20; height += 1) {
+            value.rearSuspension.leftVerticalOffsetMm = height;
+            value.rearSuspension.rightVerticalOffsetMm = -height;
+            const snapshot = solveSuspension(value);
+            expect(snapshot.rearSolution).not.toBeNull();
+            for (const side of [0, 1] as const) {
+                const flex = snapshot.rearSolution!.flex[side];
+                expect(Math.abs(flex.twistRad)).toBeLessThanOrEqual(10 * Math.PI / 180 + 1e-8);
+                expect(flex.bendingRad).toBeLessThanOrEqual(10 * Math.PI / 180 + 1e-8);
+                expect(snapshot.trailingArms![side][2]).toEqual(snapshot.trailingArmMounts[side]);
+            }
+            const point = snapshot.rearSolution!.mainOuterMounts[0];
+            expect(Math.hypot(...point.map((coordinate, axis) => coordinate - previous[axis]))).toBeLessThan(3);
+            previous = point;
+        }
+        expect(solveSuspension(value).rearSolution!.flex[0].bendingRad).toBeGreaterThan(0.01);
+    });
+
+    it("enforces twist and bending limits and allows more travel when they increase", () => {
+        const value = project();
+        value.rearSuspension.leftVerticalOffsetMm = 20;
+        const flexible = solveSuspension(value);
+        expect(flexible.rearSolution).not.toBeNull();
+        const flex = flexible.rearSolution!.flex[0];
+        expect(Math.abs(flex.twistRad)).toBeGreaterThan(0.001);
+        value.rearHub.trailingArmTwistLimitDeg = Math.abs(flex.twistRad) * 180 / Math.PI / 2;
+        let invalid = solveSuspension(value);
+        expect(invalid.rearSolution).toBeNull();
+        expect(invalid.geometryMessage).toContain("twist or bending exceeds");
+        value.rearHub.trailingArmTwistLimitDeg = 10;
+        value.rearHub.trailingArmBendingLimitDeg = 0;
+        invalid = solveSuspension(value);
+        expect(invalid.rearSolution).toBeNull();
+        expect(invalid.geometryMessage).toContain("twist or bending exceeds");
+        value.rearHub.trailingArmBendingLimitDeg = 10;
+        value.rearSuspension.leftVerticalOffsetMm = 30;
+        expect(solveSuspension(value).rearSolution).toBeNull();
+        value.rearHub.trailingArmBendingLimitDeg = 20;
+        expect(solveSuspension(value).rearSolution).not.toBeNull();
     });
 
     it("calculates mirrored positions, alignment and ground geometry without mutating the project", () => {
@@ -71,10 +112,10 @@ describe("solved suspension snapshot", () => {
         const value = project();
         const distance = (a: number[], b: number[]) =>
             Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-        const expected = [Math.hypot(200, 10), Math.hypot(189, 97), Math.hypot(11, 10, 97)];
+        const expected = [Math.hypot(200, 10), Math.hypot(190, 97), Math.hypot(10, 10, 97)];
         let previousCamber: number[] | undefined;
         const relativeHeights: number[] = [];
-        for (const travel of [-40, -20, 0, 20, 40]) {
+        for (const travel of [-20, -10, 0, 10, 20]) {
             value.rearSuspension.leftVerticalOffsetMm = travel;
             value.rearSuspension.rightVerticalOffsetMm = -travel;
             const result = solveSuspension(value);
@@ -90,7 +131,6 @@ describe("solved suspension snapshot", () => {
                 expect(distance(main, toe)).toBeCloseTo(expected[0], 8);
                 expect(distance(main, camber)).toBeCloseTo(expected[1], 8);
                 expect(distance(toe, camber)).toBeCloseTo(expected[2], 8);
-                expect(toe[2] - main[2]).toBeCloseTo(value.rearHub.toeArmOuterMountHeightOffsetMm, 8);
             }
             const camber = result.camberArmOuterMounts![0];
             relativeHeights.push(camber[2] - result.rearSolution!.mainOuterMounts[0][2]);
@@ -109,45 +149,25 @@ describe("solved suspension snapshot", () => {
         expect(rearHeightReachable(value, 0, 0)).toBe(false);
     });
 
-    it("mirrors the solved hubs and responds to camber arm length changes", () => {
+    it("mirrors the solved hubs and rejects incompatible camber arm lengths", () => {
         const value = project();
         const original = solveSuspension(value);
         value.rearSuspension.camberArmLengthMm = 220;
         const changed = solveSuspension(value);
-        expect(changed.rearSolution).not.toBeNull();
-        for (const result of [original, changed]) {
+        expect(changed.rearSolution).toBeNull();
+        for (const result of [original]) {
             const [left, right] = result.camberArmOuterMounts!;
             expect(left[0]).toBeCloseTo(right[0], 8);
             expect(left[1]).toBeCloseTo(-right[1], 8);
             expect(left[2]).toBeCloseTo(right[2], 8);
         }
-        expect(changed.rearSolution!.toeOuterMounts).toEqual(original.rearSolution!.toeOuterMounts);
-        expect(changed.camberArmOuterMounts![0]).not.toEqual(original.camberArmOuterMounts![0]);
-        const inner = changed.camberArmMounts[0];
-        const outer = changed.camberArmOuterMounts![0];
-        expect(Math.hypot(outer[0] - inner[0], outer[1] - inner[1], outer[2] - inner[2])).toBeCloseTo(220, 8);
     });
 
-    it.each([-20, 20])("preserves the tilted hub dimensions with camber lateral offset %i", (lateral) => {
+    it.each([-20, 20])("reports incompatible hub geometry with camber lateral offset %i", (lateral) => {
         const value = project();
         value.rearHub.toeArmOuterMountHeightOffsetMm = 15;
         value.rearHub.camberArmOuterMountLateralOffsetMm = lateral;
-        const distance = (a: number[], b: number[]) =>
-            Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-        for (const travel of [-20, 0, 20]) {
-            value.rearSuspension.leftVerticalOffsetMm = travel;
-            const result = solveSuspension(value);
-            expect(result.rearSolution).not.toBeNull();
-            for (const side of [0, 1] as const) {
-                const main = result.rearSolution!.mainOuterMounts[side];
-                const toe = result.rearSolution!.toeOuterMounts[side];
-                const camber = result.camberArmOuterMounts![side];
-                expect(distance(main, toe)).toBeCloseTo(Math.hypot(200, 10, 15), 8);
-                expect(distance(main, camber)).toBeCloseTo(Math.hypot(189, lateral, 97), 8);
-                expect(distance(toe, camber)).toBeCloseTo(Math.hypot(11, 10 - lateral, 15 - 97), 8);
-                expect(distance(result.camberArmMounts[side], camber)).toBeCloseTo(210, 8);
-            }
-        }
+        expect(solveSuspension(value).rearSolution).toBeNull();
     });
 
     it("preserves independent front and rear failure states and warning keys", () => {
@@ -237,46 +257,25 @@ describe("drag constraints", () => {
         expect(value).toEqual(before);
     });
 
-    it("stops dragging when the camber constraint fails even if the main and toe arms still reach", () => {
-        const value = project();
-        value.rearSuspension.camberArmLengthMm = 190;
-        const snapshot = solveSuspension(value);
-        expect(snapshot.rearSolution).not.toBeNull();
-        let target: number | undefined;
-        for (let magnitude = 1; magnitude <= 350 && target === undefined; magnitude += 1) {
-            for (const offset of [magnitude, -magnitude]) {
-                const nominal = rearMainArmOuterMountPoints(
-                    snapshot.rearMounts, snapshot.trailingArmMounts, value.rearSuspension.mainArmLengthMm,
-                    value.rearHub.trailingArmLengthMm, value.rearHub.mainArmOuterMountStaticHeightMm, offset, 0,
-                );
-                try {
-                    solveRearArmMounts(
-                        snapshot.rearMounts, snapshot.toeArmMounts, nominal, value.rearSuspension.mainArmLengthMm,
-                        value.rearSuspension.toeArmLengthMm, value.rearHub.toeArmOuterMountHeightOffsetMm,
-                        value.rearHub.toeArmOuterMountForwardOffsetMm, value.rearHub.toeArmOuterMountLateralOffsetMm,
-                        value.rearHub.mainArmOuterMountStaticHeightMm,
-                    );
-                } catch (error) {
-                    if (!isGeometryError(error, REAR_GEOMETRY_ERROR_CODES)) throw error;
-                    continue;
-                }
-                if (!rearHeightReachable(value, 0, offset)) {
-                    target = offset;
-                    break;
-                }
-            }
-        }
-        expect(target).toBeDefined();
-        const accepted = acceptedRearOffset(value, 0, target!);
-        expect(Math.abs(accepted)).toBeLessThan(Math.abs(target!));
-        expect(rearHeightReachable(value, 0, accepted)).toBe(true);
-    });
+    it.each([[0, -1], [0, 1], [1, -1], [1, 1]] as const)(
+        "clamps side %i in direction %i at the configured flex boundary", (side, direction) => {
+            const value = project();
+            const boundary = acceptedRearOffset(value, side, direction * 60);
+            expect(Math.abs(boundary)).toBeGreaterThan(20);
+            expect(Math.abs(boundary)).toBeLessThan(30);
+            expect(rearHeightReachable(value, side, boundary)).toBe(true);
+            expect(rearHeightReachable(value, side, boundary + direction * 0.1)).toBe(false);
+            value.rearHub.trailingArmBendingLimitDeg = 20;
+            const increased = acceptedRearOffset(value, side, direction * 60);
+            expect(Math.abs(increased)).toBeGreaterThan(Math.abs(boundary) + 1);
+        },
+    );
 
-    it.each([0, 1] as const)("moves rear side %i longitudinally and vertically while preserving link lengths", (side) => {
+    it.each([0, 1] as const)("moves rear side %i along its constrained path while preserving link lengths", (side) => {
         const value = project();
         const before = solveSuspension(value);
         const accepted = acceptedRearPosition(value, side, {longitudinalMm: 30, verticalMm: 20});
-        expect(accepted.longitudinalMm).toBeCloseTo(30);
+        expect(accepted.longitudinalMm).not.toBeCloseTo(30);
         expect(accepted.verticalMm).toBeCloseTo(20);
         if (side === 0) {
             value.rearSuspension.leftLongitudinalOffsetMm = accepted.longitudinalMm;
@@ -287,7 +286,7 @@ describe("drag constraints", () => {
         }
         const after = solveSuspension(value);
         const main = after.rearSolution!.mainOuterMounts[side];
-        expect(main[0] - before.rearSolution!.mainOuterMounts[side][0]).toBeCloseTo(30, 8);
+        expect(main[0] - before.rearSolution!.mainOuterMounts[side][0]).toBeCloseTo(accepted.longitudinalMm, 8);
         expect(main[2] - before.rearSolution!.mainOuterMounts[side][2]).toBeCloseTo(20, 8);
         expect(after.rearSolution!.mainOuterMounts[1 - side]).toEqual(before.rearSolution!.mainOuterMounts[1 - side]);
         const distance = (a: number[], b: number[]) =>
@@ -305,9 +304,7 @@ describe("drag constraints", () => {
         expect(distance(main, toe)).toBeCloseTo(distance(oldMain, oldToe), 8);
         expect(distance(main, camber)).toBeCloseTo(distance(oldMain, oldCamber), 8);
         expect(distance(toe, camber)).toBeCloseTo(distance(oldToe, oldCamber), 8);
-        const boundary = acceptedRearPosition(value, side, {longitudinalMm: 1000, verticalMm: 20});
-        expect(boundary.longitudinalMm).toBeLessThan(1000);
-        expect(rearPositionReachable(value, side, boundary)).toBe(true);
+        expect(rearPositionReachable(value, side, accepted)).toBe(true);
     });
 
     it("clamps rack travel symmetrically to the configured limits", () => {

@@ -1,11 +1,12 @@
 import {
-    controlArmPickupPoints, frontTopMountPoints, rearCamberArmInnerMountPoints, rearMainArmInnerMountPoints, rearMainArmOuterMountPoints,
-    rearToeArmInnerMountPoints, rearTrailingArmMountPoints, solveRearHubMounts, steeringRackPivotPoints,
+    controlArmPickupPoints, frontTopMountPoints, rearCamberArmInnerMountPoints, rearMainArmInnerMountPoints,
+    rearToeArmInnerMountPoints, rearTrailingArmMountPoints, steeringRackPivotPoints,
     steeringRackTravelLimitMm, tieRodConstrainedKnucklePoints,
 } from "./coordinates";
 import {FRONT_GEOMETRY_ERROR_CODES, isGeometryError, REAR_GEOMETRY_ERROR_CODES} from "./geometryError";
 import {STRUT_TRAVEL_TOLERANCE_MM, strutTravelViolation} from "./strutTravel";
 import type {SuspensionProject} from "./types";
+import {solveProjectRearHub} from "./kinematics";
 
 export const MAX_CONTROL_ARM_DRAG_ANGLE_RAD = Math.PI / 2;
 export type ConstraintViolation = [number, number];
@@ -71,7 +72,7 @@ export interface RearDragOffset {
     verticalMm: number;
 }
 
-export function rearPositionReachable(project: SuspensionProject, index: 0 | 1, offset: RearDragOffset): boolean {
+function solveRearPosition(project: SuspensionProject, index: 0 | 1, offset: RearDragOffset) {
     const rear = project.rearSuspension;
     const hub = project.rearHub;
     const inner = rearMainArmInnerMountPoints(rear.frontToRearLengthMm, rear.mainArmInnerMountWidthMm, rear.mainArmInnerMountHeightMm);
@@ -80,24 +81,15 @@ export function rearPositionReachable(project: SuspensionProject, index: 0 | 1, 
         inner, rear.camberArmInnerMountHeightMm, rear.camberArmInnerMountForwardOffsetMm, rear.camberArmInnerMountWidthMm,
     );
     const trailing = rearTrailingArmMountPoints(inner, hub.trailingArmMountWidthMm, hub.trailingArmMountHeightMm, hub.trailingArmMountForwardOffsetMm);
-    const nominal = rearMainArmOuterMountPoints(
-        inner, trailing, rear.mainArmLengthMm, hub.trailingArmLengthMm, hub.mainArmOuterMountStaticHeightMm,
-        index === 0 ? offset.verticalMm : rear.leftVerticalOffsetMm,
-        index === 1 ? offset.verticalMm : rear.rightVerticalOffsetMm,
-    );
+    return solveProjectRearHub(project, [
+        hub.mainArmOuterMountStaticHeightMm + (index === 0 ? offset.verticalMm : rear.leftVerticalOffsetMm),
+        hub.mainArmOuterMountStaticHeightMm + (index === 1 ? offset.verticalMm : rear.rightVerticalOffsetMm),
+    ], {main: inner, toe, camber, trailing});
+}
+
+export function rearPositionReachable(project: SuspensionProject, index: 0 | 1, offset: RearDragOffset): boolean {
     try {
-        solveRearHubMounts(
-            inner, toe, nominal, rear.mainArmLengthMm, rear.toeArmLengthMm, hub.toeArmOuterMountHeightOffsetMm,
-            hub.toeArmOuterMountForwardOffsetMm, hub.toeArmOuterMountLateralOffsetMm, hub.mainArmOuterMountStaticHeightMm,
-            {
-                innerMounts: camber, lengthMm: rear.camberArmLengthMm, heightMm: hub.camberArmOuterMountHeightMm,
-                forwardOffsetMm: hub.camberArmOuterMountForwardOffsetMm, lateralOffsetMm: hub.camberArmOuterMountLateralOffsetMm,
-            },
-            [
-                index === 0 ? offset.longitudinalMm : rear.leftLongitudinalOffsetMm,
-                index === 1 ? offset.longitudinalMm : rear.rightLongitudinalOffsetMm,
-            ],
-        );
+        solveRearPosition(project, index, offset);
         return true;
     } catch (error) {
         if (isGeometryError(error, REAR_GEOMETRY_ERROR_CODES)) return false;
@@ -122,7 +114,7 @@ export function acceptedRearPosition(project: SuspensionProject, index: 0 | 1, r
     const maxHeight = rear.mainArmInnerMountHeightMm + rear.mainArmLengthMm - project.rearHub.mainArmOuterMountStaticHeightMm;
     const target = {
         verticalMm: Math.max(minHeight, Math.min(maxHeight, requested.verticalMm)),
-        longitudinalMm: requested.longitudinalMm,
+        longitudinalMm: current.longitudinalMm,
     };
     let offset = current;
     const interpolate = (fraction: number): RearDragOffset => ({
@@ -150,7 +142,14 @@ export function acceptedRearPosition(project: SuspensionProject, index: 0 | 1, r
             break;
         }
     }
-    return offset;
+    try {
+        const before = solveRearPosition(project, index, current).mainOuterMounts[index][0];
+        const after = solveRearPosition(project, index, offset).mainOuterMounts[index][0];
+        return {...offset, longitudinalMm: current.longitudinalMm + after - before};
+    } catch (error) {
+        if (!isGeometryError(error, REAR_GEOMETRY_ERROR_CODES)) throw error;
+        return current;
+    }
 }
 
 export function acceptedRearOffset(project: SuspensionProject, index: 0 | 1, requested: number): number {

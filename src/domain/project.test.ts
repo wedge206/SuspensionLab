@@ -87,6 +87,19 @@ describe("project field contract", () => {
         });
     });
 
+    it("persists trailing arm flex limits and supplies defaults to older projects", () => {
+        const project = createProjectFromTemplate("default", "Project", "project-id");
+        project.rearHub.trailingArmTwistLimitDeg = 2.5;
+        project.rearHub.trailingArmBendingLimitDeg = 0;
+        expect(validateProject(JSON.parse(JSON.stringify(project))).rearHub).toMatchObject({
+            trailingArmTwistLimitDeg: 2.5, trailingArmBendingLimitDeg: 0,
+        });
+        const {trailingArmTwistLimitDeg: _twist, trailingArmBendingLimitDeg: _bend, ...rearHub} = project.rearHub;
+        expect(validateProject({...project, rearHub}).rearHub).toMatchObject({
+            trailingArmTwistLimitDeg: 10, trailingArmBendingLimitDeg: 10,
+        });
+    });
+
     it("rejects a negative strut mount angle rather than normalizing it", () => {
         expect(() => validateProject({
             ...defaultTemplate, wheelKnuckle: {...defaultTemplate.wheelKnuckle, strutMountAngleDeg: -20},

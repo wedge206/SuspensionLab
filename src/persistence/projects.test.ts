@@ -62,7 +62,7 @@ describe("project template assignments", () => {
         expect(loadProjects().projects[0].rearSuspension.mainArmInnerMountHeightMm).toBe(250);
         expect(loadProjects().projects[0].rearSuspension.frontToRearLengthMm).toBe(1900);
         expect(loadProjects().projects[0].rearSuspension).toMatchObject({
-            toeArmInnerMountWidthMm: 685, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
+            toeArmInnerMountWidthMm: 600, toeArmInnerMountHeightMm: 300, toeArmMainArmWidthMm: 200,
         });
     });
 
@@ -137,7 +137,7 @@ describe("project template assignments", () => {
         expect((await readProjectFile(file)).rearSuspension.mainArmInnerMountHeightMm).toBe(250);
         expect((await readProjectFile(file)).rearSuspension.frontToRearLengthMm).toBe(1900);
         expect((await readProjectFile(file)).rearSuspension).toMatchObject({
-            toeArmInnerMountWidthMm: 685, toeArmInnerMountHeightMm: 260, toeArmMainArmWidthMm: 201,
+            toeArmInnerMountWidthMm: 600, toeArmInnerMountHeightMm: 300, toeArmMainArmWidthMm: 200,
         });
     });
 });

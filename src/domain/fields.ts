@@ -691,7 +691,7 @@ export const projectFields = {
                 group: "rear-2",
                 order: 51,
                 label: "Trailing Arm Length",
-                hint: "Forward extension from the hub (also sets its static reference)",
+                hint: "Fixed forward extension from the hub to the trailing arm mount",
                 unit: "mm",
                 min: "1",
                 step: "1"
@@ -727,7 +727,7 @@ export const projectFields = {
                 group: "rear-2",
                 order: 54,
                 label: "Trailing Arm Mount Forward Offset",
-                hint: "Forward offset from the rear hub",
+                hint: "Forward offset from the rear main arm inner mount",
                 unit: "mm",
                 min: "1",
                 step: "1"
@@ -753,6 +753,30 @@ export const projectFields = {
                 hint: "Vertical offset from the toe outer mount",
                 unit: "mm",
                 step: "1"
+            }
+        },
+        trailingArmTwistLimitDeg: {constraint: "nonNegative",
+            ui: {
+                id: "rear-trailing-arm-twist-limit",
+                group: "rear-2",
+                order: 57,
+                label: "Trailing Arm Twist Limit",
+                hint: "Maximum twist about the trailing arm axis",
+                unit: "deg",
+                min: "0",
+                step: "0.1"
+            }
+        },
+        trailingArmBendingLimitDeg: {constraint: "nonNegative",
+            ui: {
+                id: "rear-trailing-arm-bending-limit",
+                group: "rear-2",
+                order: 58,
+                label: "Trailing Arm Bending Limit",
+                hint: "Maximum top-view bending angle",
+                unit: "deg",
+                min: "0",
+                step: "0.1"
             }
         },
     },

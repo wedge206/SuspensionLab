@@ -53,7 +53,7 @@
   },
   "rearSuspension": {
     "camberArmInnerMountHeightMm": 163,
-    "camberArmInnerMountForwardOffsetMm": 200,
+    "camberArmInnerMountForwardOffsetMm": 160,
     "camberArmInnerMountWidthMm": 760,
     "camberArmLengthMm": 290,
     "mainArmInnerMountWidthMm": 285,
